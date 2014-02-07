@@ -1,6 +1,6 @@
 README for TSM - Twitter Subgraph Manipulator by Deen Freelon <dfreelon@gmail.com>
 
-In short, TSM is a Python module that contains some useful functions for analyzing Twitter and Twitter-like network data. I wrote it for my own research purposes but thought someone out there might find it useful.
+In short, TSM is a Python module that contains a few functions for analyzing Twitter and Twitter-like network data. I wrote it for my own research purposes but thought someone out there might find it useful.
 
 Here are TSM's requirements:
 * Python 3.x
