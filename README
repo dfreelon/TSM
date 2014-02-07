@@ -5,7 +5,7 @@ In short, TSM is a Python module that contains some useful functions for analyzi
 Here are TSM's requirements:
 * Python 3.x
 * NetworkX (available at http://networkx.github.io/)
-* community3.py, a version of Thomas Aynaud's Python implementation of the Louvain method of community detection modified to work with Python 3.x. You can download it from my Github page: https://github.com/dfreelon. The original is available here:    
+* community3.py, a version of Thomas Aynaud's Python implementation of the Louvain method of community detection modified to work with Python 3.x. You can download it from my Github page: https://github.com/dfreelon. The original is available here: http://perso.crans.org/aynaud/communities/   
 * tsm.py, the TSM Python module
 
 See tsm.py for a full description of its functions and how to use them. The module should work as long as NetworkX is installed and community3.py and tsm.py are placed in the same directory. 
