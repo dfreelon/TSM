@@ -204,7 +204,7 @@ def get_top_communities(edges_data,return_var='NODE_MEMBERS',save_prefix=''):
         return summary_data
 
 # calc_ei: Calculate EI index for top N communities
-# Description: This function calculates Krackhardt & Stern's EI index for each community represented in a file or variable output by get_top_communities. See Krackhardt, D., & Stern, R. N. (1988). Informal networks and organizational crises: An experimental simulation. Social psychology quarterly, 123-140.
+# Description: This function calculates Krackhardt & Stern's EI index for each community represented in a file or variable output by get_top_communities. The EI index ranges between 1 and -1, with 1 indicating that all the community's ties are with outsides, -1 indicating they are all with members, and 0 indicating equal numbers of ties with members and outsiders. See Krackhardt, D., & Stern, R. N. (1988). Informal networks and organizational crises: An experimental simulation. Social psychology quarterly, 123-140.
 # Arguments:
     # nodes_data: A community-partition dataset of the type exported by get_top_communities. Can be a variable (a list of lists) or a path to a CSV file. 
     # edges_data: An edgelist of the type exported by t2e. Can be a variable (a list of lists) or a path to a CSV file.
@@ -270,16 +270,16 @@ def calc_ei(nodes_data,edges_data,verbose='OFF',save_prefix=''):
     mean_ei = round(sum(ei_indices.values())/len(ei_indices.values()),3)
     print("Mean EI:\t",mean_ei)
     
+    if verbose == 'ON':
+        input('Press any key to continue...')
+        _get_community_overlap(mu_top,top_edges,ei_int,ei_ext)
+    
     if len(save_prefix) > 0:
         ei_list = []
         for i in ei_indices:
             ei_list.append([str(i),str(ei_indices[i])])
         ei_list.insert(0,['Community IDs','EI indices']) 
         save_csv(save_prefix + '_ei_indices.csv',ei_list)
-    
-    if verbose == 'ON':
-        input('Press any key to continue...')
-        _get_community_overlap(mu_top,top_edges,ei_int,ei_ext)
     
     print("\n")
     return ei_indices
