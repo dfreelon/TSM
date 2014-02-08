@@ -199,7 +199,7 @@ def get_top_communities(edges_data,return_var='NODE_MEMBERS',save_prefix=''):
             save_csv(outfile,outlist)
             return outlist[1:]
         else:
-            return outlist[1:]
+            return outlist
     else:
         return summary_data
 
