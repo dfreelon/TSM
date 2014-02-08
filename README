@@ -5,7 +5,7 @@ In short, TSM is a Python module that contains a few functions for analyzing Twi
 Here are some of the things TSM can do:
 * Extract retweets and @-mentions into edgelist format for network analysis and visualization
 * Partition networks into communities, isolate the N largest communities, and identify the most-connected users in each community
-* Measure the insularity of network communities to determine the extent to which each looks like an echo chamber
+* Measure the insularity (using EI indices) of network communities to determine the extent to which each looks like an echo chamber
 * Measure the overlap between network communities to determine which ones interact more and less often
 * Get the top retweets in a Twitter dataset and rank them by N of retweets and by community
 * Track Twitter communities over time: compute similarity scores (weighted Jaccard coefficients) for partitioned network communities based on the same Twitter keyword search at two different time slices
