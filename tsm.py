@@ -5,7 +5,7 @@
 # (c) 2014 by Deen Freelon <dfreelon@gmail.com>
 # Distributed under the BSD 3-clause license. See LICENSE.txt or http://opensource.org/licenses/BSD-3-Clause for details.
 
-# This Python module contains a set of functions that create and manipulate network communities (subgraphs) in various ways. I created it to work with Twitter networks, but only t2e and get_top_rts are Twitter-specific. This module is intended for use with long-tailed, extremely sparse networks like those commonly found on the web. It functions only with Python 3.x and is not backwards-compatible. Here's a brief list of the functions and what each does:
+# This Python module contains a set of functions that create and manipulate Twitter and Twitter-like network communities (subgraphs) in various ways. The only Twitter-specific functions are t2e and get_top_rts; the rest can be used with any directed edgelist. This module is intended for use with directed, long-tailed, and extremely sparse networks like those commonly found on the web. It functions only with Python 3.x and is not backwards-compatible. Here's a brief list of the functions and what each does:
 
 # Warning: TSM performs very little custom error-handling, so make sure your inputs are formatted properly! If you have questions, please let me know via email.
 
