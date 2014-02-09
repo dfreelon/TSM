@@ -49,7 +49,7 @@ import random
 
 # FUNCTIONS
 
-# load_file and save_csv are mostly self-explanatory. load_file accepts both strings representing file paths and variables. Either must contain the expected internal structure for the function to work properly.
+# load_file and save_csv are mostly self-explanatory. load_file accepts both strings representing file paths and data variables. Either must contain the expected internal structure for the function to work properly.
 
 def load_file(data):
     if type(data) is str:
