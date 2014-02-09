@@ -204,7 +204,7 @@ def get_top_communities(edges_data,return_var='NODE_MEMBERS',save_prefix=''):
         return summary_data
 
 # calc_ei: Calculate EI index for top N communities
-# Description: This function calculates Krackhardt & Stern's EI index for each community represented in a file or variable output by get_top_communities. The EI index ranges between 1 and -1, with 1 indicating that all the community's ties are with outsides, -1 indicating they are all with members, and 0 indicating equal numbers of ties with members and outsiders. See Krackhardt, D., & Stern, R. N. (1988). Informal networks and organizational crises: An experimental simulation. Social psychology quarterly, 123-140.
+# Description: This function calculates Krackhardt & Stern's EI index for each community represented in a file or variable output by get_top_communities. The EI index ranges between 1 and -1, with 1 indicating that all the community's ties are with outsiders, -1 indicating they are all with members, and 0 indicating equal numbers of ties with members and outsiders. See Krackhardt, D., & Stern, R. N. (1988). Informal networks and organizational crises: An experimental simulation. Social psychology quarterly, 123-140.
 # Arguments:
     # nodes_data: A community-partition dataset of the type exported by get_top_communities. Can be a variable (a list of lists) or a path to a CSV file. 
     # edges_data: An edgelist of the type exported by t2e. Can be a variable (a list of lists) or a path to a CSV file.
@@ -264,7 +264,7 @@ def calc_ei(nodes_data,edges_data,verbose='OFF',save_prefix=''):
         ei_indices[i] = round((ei_ext[i]-ei_int[i])/(ei_ext[i]+ei_int[i]),3)
 
     print("***EI indices***\n")
-    print("Cluster\tEI index")
+    print("Community\tEI index")
     for i in ei_indices:
         print(str(i)+"\t"+str(ei_indices[i]))
     mean_ei = round(sum(ei_indices.values())/len(ei_indices.values()),3)
@@ -285,7 +285,7 @@ def calc_ei(nodes_data,edges_data,verbose='OFF',save_prefix=''):
     return ei_indices
 
 # _get_community_overlap: Measures overlap between each community and all others
-# Description: This function determines how a given community's "external" edges are distributed among the other communities. It is not a standalone function: it can only be run by using the "verbose" option from calc_ei. Thus, don't try to enter the following arguments into the function yourself unless you know what you're doing.
+# Description: This function reveals how a given community's "external" edges are distributed among the other communities. It is not a standalone function: it can only be run by using the "verbose" option from calc_ei. Thus, don't try to enter the following arguments into the function yourself unless you know what you're doing.
 # Arguments:
     # top_community_ids: A list of the top N communities by membership.
     # top_edges: A list of all edges both of whose nodes belong to one of the top N communities.
@@ -293,16 +293,16 @@ def calc_ei(nodes_data,edges_data,verbose='OFF',save_prefix=''):
     # ei_ext: A dict in which each key is one of the top N community IDs and its value is the number of edges in which one node is a member of that community and the other is a member of any other community.
 # Output: A display of the top N community IDs, each of which is followed by: 
     # the proportion of internal ties (i.e. those in which both nodes are community members)
-    # the total proportion of external ties (i.e. those in which one node is a community member and one is not)
-    # The proportion of external ties that are incoming
-    # The proportion of external ties that are outgoing
-    # The proportions of incoming and outgoing ties shared with every other community. 
-# Incoming ties, denoted by "-i," are initiated by members of other communities and point toward members of the focal community; outgoing ties, denoted by "-o," are the opposite. Note: this function returns no values; instead, it pushes the results of its calculations to stdout. Future versions of TSM may include a file output option for this function.
+    # The proportion of external ties that are received by community members from outsiders
+    # The proportion of external ties that are sent from community members to outsiders
+    # The difference between the above two proportions
+    # The proportions of sent and received ties shared with every other community. 
+# Received ties, denoted by "-r," are initiated by members of other communities and point toward members of the focal community; sent ties, denoted by "-s," are the opposite. Note: this function returns no values; instead, it pushes the results of its calculations to stdout. Future versions of TSM may include a file output option for this function.
     
 def _get_community_overlap(top_community_ids,top_edges,ei_int,ei_ext):
     
-    adj_out = {} #outgoing retweets point away from the focal cluster
-    adj_in = {} #incoming retweets point toward the focal cluster
+    adj_out = {} #sent ties point away from the focal cluster
+    adj_in = {} #received ties point toward the focal cluster
 
     for i in top_community_ids:
         adj_out[i] = {}
@@ -321,7 +321,7 @@ def _get_community_overlap(top_community_ids,top_edges,ei_int,ei_ext):
 
     for i in top_community_ids:
         total = ei_int[i]+ei_ext[i]
-        print("\nCommunity\tInternal\tIncoming\tOutgoing\tIn - out")
+        print("\nCommunity\tInternal\tReceived\tSent\tReceived - Sent")
         incoming = round(sum(adj_in[i].values())/total,3)
         outgoing = round(sum(adj_out[i].values())/total,3)
         print(str(i)+"\t"+str(round(ei_int[i]/total,3))+"\t"+str(incoming)+"\t"+str(outgoing)+"\t"+str(round(incoming-outgoing,3))+"\n")
