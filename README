@@ -17,3 +17,5 @@ Here are TSM's requirements:
 * tsm.py, the TSM Python module
 
 See tsm.py for a full description of TSM's functions and how to use them. The module should work as long as NetworkX is installed and community3.py and tsm.py are placed in the same directory. tsm_test2.py contains code examples, but requires raw Twitter data to function properly (details in the file itself).
+
+I gratefully acknowledge funding support from the US Institute of Peace in creating this module.
