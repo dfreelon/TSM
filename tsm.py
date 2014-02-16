@@ -49,7 +49,7 @@ import random
 
 # FUNCTIONS
 
-# load_file and save_csv are mostly self-explanatory. load_file accepts both strings representing file paths and data variables. Either must contain the expected internal structure for the function to work properly.
+# load_file and save_csv are mostly self-explanatory. load_file accepts both strings representing file paths and variables. Either must contain the expected internal structure for the function to work properly.
 
 def load_file(data):
     if type(data) is str:
@@ -208,11 +208,11 @@ def get_top_communities(edges_data,return_var='NODE_MEMBERS',save_prefix=''):
 # Arguments:
     # nodes_data: A community-partition dataset of the type exported by get_top_communities. Can be a variable (a list of lists) or a path to a CSV file. 
     # edges_data: An edgelist of the type exported by t2e. Can be a variable (a list of lists) or a path to a CSV file.
-    # verbose: If set to 'ON', the function _get_community_overlap will execute. Default is 'OFF'.
+    # verbose: If set to 'ON', the function _get_community_overlap will execute after calc_ei has finished. If set to 'ON_PAUSE', _get_community_overlap will execute but you will be prompted to press any key to proceed after calc_ei has finished. Default is 'OFF'.
     # save_prefix: Add a string here to save your file to CSV. Your saved file will be named as follows: 'string'_communities.csv
 # Output: A dict wherein the keys are the community ID numbers and the values are their EI indices.  If save_prefix is set, this dict will also be saved as a CSV file.
         
-def calc_ei(nodes_data,edges_data,verbose='OFF',save_prefix=''):
+def calc_ei(nodes_data,edges_data,verbose='ON_PAUSE',save_prefix=''):
 
     nodes = load_file(nodes_data)
     if(type(nodes_data) is str):
@@ -270,8 +270,10 @@ def calc_ei(nodes_data,edges_data,verbose='OFF',save_prefix=''):
     mean_ei = round(sum(ei_indices.values())/len(ei_indices.values()),3)
     print("Mean EI:\t",mean_ei)
     
-    if verbose == 'ON':
+    if verbose == 'ON_PAUSE':
         input('Press any key to continue...')
+    
+    if verbose == 'ON' or verbose == 'ON_PAUSE':
         _get_community_overlap(mu_top,top_edges,ei_int,ei_ext)
     
     if len(save_prefix) > 0:
@@ -402,10 +404,12 @@ def get_top_rts(tweets_file,nodes_data,min_rts=5,save_prefix=''):
 def match_communities(nodes_data_A,nodes_data_B,propor=0.01,threshold=0.3):
 
     nodesA = load_file(nodes_data_A)
-    del nodesA[0]
+    if type(nodes_data_A) is str:
+        del nodesA[0]
 
     nodesB = load_file(nodes_data_B)
-    del nodesB[0]
+    if type(nodes_data_B) is str:
+        del nodesB[0]
 
     uniq_cl_1 = list(set([i[1] for i in nodesA])) #creates a unique list of the top 10 clusters from each cluster file
     uniq_cl_2 = list(set([i[1] for i in nodesB]))
