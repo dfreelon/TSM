@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 # TSM (Twitter Subgraph Manipulator) for Python 3
-# release 1 (02/08/14)
+# release 2 (03/26/14)
 # (c) 2014 by Deen Freelon <dfreelon@gmail.com>
 # Distributed under the BSD 3-clause license. See LICENSE.txt or http://opensource.org/licenses/BSD-3-Clause for details.
 
