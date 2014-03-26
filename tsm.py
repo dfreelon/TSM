@@ -5,13 +5,13 @@
 # (c) 2014 by Deen Freelon <dfreelon@gmail.com>
 # Distributed under the BSD 3-clause license. See LICENSE.txt or http://opensource.org/licenses/BSD-3-Clause for details.
 
-# This Python module contains a set of functions that create and manipulate Twitter and Twitter-like network communities (subgraphs) in various ways. The only Twitter-specific functions are t2e and get_top_rts; the rest can be used with any directed edgelist. This module is intended for use with directed, long-tailed, and extremely sparse networks like those commonly found on the web. It functions only with Python 3.x and is not backwards-compatible. Here's a brief list of the functions and what each does:
+# This Python module contains a set of functions that create and manipulate Twitter and Twitter-like network communities (subgraphs) in various ways. The only Twitter-specific functions are t2e and get_top_rts; the rest can be used with any directed edgelist. This module is intended for use with directed, long-tailed, and extremely sparse networks like those commonly found on the web. It functions only with Python 3.x and is not backwards-compatible (although you could probably branch off a 2.x port with minimal effort).
 
 # Warning: TSM performs very little custom error-handling, so make sure your inputs are formatted properly! If you have questions, please let me know via email.
 
 # FUNCTION LIST
 
-# load_file: Loads files quickly
+# load_data: Loads files quickly
 
 # save_csv: Quick CSV output
 
@@ -49,29 +49,29 @@ import random
 
 # FUNCTIONS
 
-# load_file and save_csv are mostly self-explanatory. load_file accepts both strings representing file paths and variables. Either must contain the expected internal structure for the function to work properly.
+# load_data and save_csv are mostly self-explanatory. load_data accepts both strings representing file paths and variables. Whichever you choose must contain the expected internal structure for the function to work properly.
 
-def load_file(data):
+def load_data(data):
     if type(data) is str:
-        csv_out = []
+        csv_data = []
         with open(data,'r',encoding = enc) as f:
             reader = csv.reader(f)
             for row in reader:
-                csv_out.append(row)
-        return csv_out
+                csv_data.append(row)
+        return csv_data
     else:
         return data
 
-def save_csv(outfile,data):
+def save_csv(outfile,data): #this assumes a list of lists wherein the second-level list items contain no commas
     with open(outfile,'w',encoding = enc) as out: 
         for line in data:
             row = ','.join(line) + "\n"
             out.write(row)
 
 # t2e: convert raw Twitter data to edgelist format
-# Description: t2e takes raw Twitter data as input and outputs an edgelist consisting of the names of the tweet authors (col 1) and the names of the users mentioned and/or retweeted (col 2). 
+# Description: t2e takes raw Twitter data as input and outputs an edgelist consisting of the names of the tweet authors (col 1) and the names of the nodes mentioned and/or retweeted (col 2). 
 # Arguments: 
-    # tweets_file: a path to a CSV file (the only delimiter currently allowed is commas) with tweet authors listed in col 1 and corresponding tweet text in col 2. If col 1 contains text, col 2 must as well, and vice versa.
+    # tweets_file: a path to a CSV file (the only delimiter currently allowed is commas) with tweet authors listed in col 1 and corresponding tweet text in col 2. If col 1 contains any text, col 2 must as well, and vice versa.
     # extmode: see below
     # save_prefix: Add a string here to save your file to CSV. Your saved file will be named as follows: 'string'_edgelist.csv
 # Output: An edgelist in the form of a Python list of lists. If save_prefix is set, the edgelist will also be saved as a CSV file.
@@ -103,7 +103,7 @@ def t2e(tweets_file,extmode='ALL',save_prefix=''):
                 g_tmp.append(' ' + row[1] + ' ')
 
     g_tmp = [t.split('@') for t in g_tmp] #splits each tweet along @s
-    g_trg = [[t[:re.search('[^A-Za-z0-9_]',t).start()].lower().strip() for t in chunk if re.search('[^A-Za-z0-9_]',t) is not None] for chunk in g_tmp] #strips out everything after the @ sign and trailing colons, leaving (hopefully) a list of lists of usernames
+    g_trg = [[t[:re.search('[^A-Za-z0-9_]',t).start()].lower().strip() for t in chunk if re.search('[^A-Za-z0-9_]',t) is not None] for chunk in g_tmp] #strips out everything after the @ sign and trailing colons, leaving (hopefully) a list of lists of node names
     for line in g_trg:
         if len(line) > 1 and line[0] == '': #removes blank entries from lines mentioning at least one name
             del line[0]
@@ -133,14 +133,14 @@ def t2e(tweets_file,extmode='ALL',save_prefix=''):
 # get_top_communities: Get top N communities by membership
 # Description: This function runs the Louvain method for community detection on an edgelist and returns the names within each of the top N detected communities, the community to which each name belongs, and each name's in-degree. It's basically a wrapper for Thomas Aynaud's excellent Python implementation of Louvain (original version here: http://perso.crans.org/aynaud/communities/) with a few upgrades I found useful. See also Blondel, V. D., Guillaume, J. L., Lambiotte, R., & Lefebvre, E. (2008). Fast unfolding of communities in large networks. Journal of Statistical Mechanics: Theory and Experiment, 2008(10), P10008.
 # Arguments:
-    # edges: An edgelist of the type exported by t2e. Can be a variable (a list of lists) or a path to a CSV file.
+    # edges_data: An edgelist of the type exported by t2e. Can be a variable (a list of lists) or a path to a CSV file.
     # return_var: By default, this function returns all community data as described above. If set to any other string, it returns the list of summary data described above.
     # save_prefix: Add a string here to save your file to CSV. Your saved file will be named as follows: 'string'_communities.csv
 # Output: If return_var is set to NODE_MEMBERS, a list of lists, each of which contains a unique node name, its community ID number, and its in-degree, ranked in descending order by in-degree. If return_var is set to anything else, a list of summary data about the Louvain partition (modularity, proportion of nodes included in the top N communities, proportion of edges included in the top N communities, total number of communities detected). If save_prefix is set and return_var is set to NODE_MEMBERS, the community partition data will be saved to CSV. If save_prefix is set but return_var is set to anything else, nothing will be saved. 
 
 def get_top_communities(edges_data,return_var='NODE_MEMBERS',save_prefix=''):
 
-    edge_list = load_file(edges_data)
+    edge_list = load_data(edges_data)
     random.shuffle(edge_list)
 
     non_net = nx.Graph()
@@ -212,13 +212,13 @@ def get_top_communities(edges_data,return_var='NODE_MEMBERS',save_prefix=''):
     # save_prefix: Add a string here to save your file to CSV. Your saved file will be named as follows: 'string'_communities.csv
 # Output: A dict wherein the keys are the community ID numbers and the values are their EI indices.  If save_prefix is set, this dict will also be saved as a CSV file.
         
-def calc_ei(nodes_data,edges_data,verbose='ON_PAUSE',save_prefix=''):
+def calc_ei(nodes_data,edges_data,verbose='OFF',save_prefix=''):
 
-    nodes = load_file(nodes_data)
+    nodes = load_data(nodes_data)
     if(type(nodes_data) is str):
         del nodes[0] #remove headers from CSV
     
-    edges = load_file(edges_data)
+    edges = load_data(edges_data)
 
     modclass = [i[1] for i in nodes]
     moduniq = {}
@@ -347,7 +347,7 @@ def get_top_rts(tweets_file,nodes_data,min_rts=5,save_prefix=''):
 
     rts = []
     
-    nodes = load_file(nodes_data)
+    nodes = load_data(nodes_data)
     if type(nodes_data) is str:
         del nodes[0]
     
@@ -393,48 +393,36 @@ def get_top_rts(tweets_file,nodes_data,min_rts=5,save_prefix=''):
         return top_rts_out
 
 # match_communities: Find the best community matches between two networks using the weighted Jaccard coefficient
-# Description: This function takes two partitioned networks, A and B, and finds the best match for each community in A among the communities in B. Matches are determined by measuring membership overlap with the weighted Jaccard coefficient. To reduce processing time, only the top x% of users by in-degree in each community are compared. The Jaccard comparisons are weighted by in-degree, meaning that higher in-degree users count more toward community similarity. This decision is based on the assumption that users of higher in-degree play a proportionately larger role in terms of maintaining community coherence.
+# Description: This function takes two partitioned networks, A and B, and finds the best match for each community in A among the communities in B. Matches are determined by measuring membership overlap with the weighted Jaccard coefficient. To reduce processing time, only the top (propor * 100)% of nodes by in-degree in each community are compared. The Jaccard comparisons are weighted by in-degree, meaning that higher in-degree nodes count more toward community similarity. This decision is based on the assumption that nodes of higher in-degree play a proportionately larger role in terms of maintaining community coherence.
 # Arguments:
     # nodes_data_A: A community-partition dataset of the type exported by get_top_communities (network A). Can be a variable or a path to a CSV file. 
     # nodes_data_B: A community-partition dataset of the type exported by get_top_communities (network B). Can be a variable or a path to a CSV file.
-    # propor: A float variable greater than 0 and less than 1 representing the per-community proportion of top in-degree users to compare between A and B. Default is 0.01 (1%). Increasing this number will increase processing time.
+    # propor: A float variable greater than 0 and less than 1 representing the per-community proportion of top in-degree nodes to compare between A and B. Default is 0.01 (1%). Increasing this number will increase processing time.
     # threshold: A float variable greater than 0 and less than 1 representing the weighted Jaccard threshold above which communities will be considered "valid" matches. Default is 0.3. I would caution against using this blindly--try a few different values and see what seems to make sense for your data.
-# Output: A display of each community ID number in A together with all nonzero weighted Jaccard coefficients with communities in B. Following this, for each community in A containing at least one Jaccard exceeding the threshold, the highest Jaccard is displayed along with the users appearing in both communities. Note: this function returns no values; instead, it pushes the results of its calculations to stdout. Future versions of TSM may include a file output option for this function. 
+# Output: A display of each community ID number in A together with all nonzero weighted Jaccard coefficients with communities in B. Following this, for each community in A containing at least one Jaccard exceeding the threshold, the highest Jaccard is displayed along with the nodes appearing in both communities. Note: this function returns no values; instead, it pushes the results of its calculations to stdout. Future versions of TSM may include a file output option for this function. 
         
 def match_communities(nodes_data_A,nodes_data_B,propor=0.01,threshold=0.3):
 
-    nodesA = load_file(nodes_data_A)
+    nodesA = load_data(nodes_data_A)
     if type(nodes_data_A) is str:
         del nodesA[0]
 
-    nodesB = load_file(nodes_data_B)
+    nodesB = load_data(nodes_data_B)
     if type(nodes_data_B) is str:
         del nodesB[0]
 
-    uniq_cl_1 = list(set([i[1] for i in nodesA])) #creates a unique list of the top 10 clusters from each cluster file
-    uniq_cl_2 = list(set([i[1] for i in nodesB]))
-
-    topusers_1 = {} #creates a dict of lists. Each list contains the top [propor*100]% most-connected nodes within each community
-    for i in uniq_cl_1:
-        cltemp = [j[0] for j in nodesA if j[1] == i]
-        pct = int(len(cltemp) * propor)
-        topusers_1[i] = [j for j in cltemp][0:pct] 
-
-    topusers_2 = {}
-    for i in uniq_cl_2:
-        cltemp = [j[0] for j in nodesB if j[1] == i]
-        pct = int(len(cltemp) * propor)
-        topusers_2[i] = [j for j in cltemp][0:pct]
-
+    topnodes_1 = _get_top_nodes(nodesA,propor)
+    topnodes_2 = _get_top_nodes(nodesB,propor)
+    
     hijacc = 0
     hidict = {}
 
-    for i in topusers_1:
+    for i in topnodes_1:
         hix = i+'x'
-        for j in topusers_2:
-            intersect = set(topusers_1[i]).intersection(set(topusers_2[j])) #get intersection of names for month 1 + 2
+        for j in topnodes_2:
+            intersect = set(topnodes_1[i]).intersection(set(topnodes_2[j])) #get intersection of names for month 1 + 2
             inter_weights = [int(k[2]) for k in nodesA if k[0] in intersect] + [int(k[2]) for k in nodesB if k[0] in intersect] #pull intersection in-degrees from both months and combine into a single list
-            union_both = set(topusers_1[i] + topusers_2[j])
+            union_both = set(topnodes_1[i] + topnodes_2[j])
             union_weights = [int(k[2]) for k in nodesA if k[0] in union_both] + [int(k[2]) for k in nodesB if k[0] in union_both] #pull union in-degrees from both months and combine into a single list
             jacc = sum(inter_weights)/sum(union_weights)
             if jacc > 0:
@@ -449,9 +437,144 @@ def match_communities(nodes_data_A,nodes_data_B,propor=0.01,threshold=0.3):
     print('Top cluster matches:')
     for i in hidict:
         if hidict[i] > threshold:
-            users_A = set(topusers_1[i[:i.find('x')]])
-            users_B = set(topusers_2[i[i.find('x')+1:]])
-            shared_users = ', '.join(users_A.intersection(users_B))
-            print(i,"\t",hidict[i],"\t",shared_users,"\n")
+            nodes_A = set(topnodes_1[i[:i.find('x')]])
+            nodes_B = set(topnodes_2[i[i.find('x')+1:]])
+            shared_nodes = ', '.join(nodes_A.intersection(nodes_B))
+            print(i,"\t",hidict[i],"\t",shared_nodes,"\n")
     
     return hidict
+
+# _get_top_nodes: Get the nodes of highest in-degree in a network
+# Desciption: This is a helper function for match_communities and get_bridges that simply loads the top (propor * 100)% of nodes by in-degree in a given network into a list.
+# Arguments:
+    # nodes_data: A community-partition dataset of the type exported by get_top_communities.
+    # propor: A float variable greater than 0 and less than 1 representing the proportion of top in-degree nodes to extract from each community. Default is 0.01 (1%). Increasing this number will increase processing time.
+#Output: A list of the top (propor * 100)% of nodes by in-degree.
+    
+def _get_top_nodes(nodes_data,propor=0.01):
+    uniq_cl = list(set([i[1] for i in nodes_data])) #creates a unique list of the top 10 clusters from each cluster file
+
+    topnodes = {} #creates a dict of lists. Each list contains the top [propor*100]% most-connected nodes within each community
+    for i in uniq_cl:
+        cltemp = [j[0] for j in nodes_data if j[1] == i]
+        pct = int(len(cltemp) * propor)
+        topnodes[i] = [j for j in cltemp][0:pct] 
+    
+    return topnodes
+
+# get_bridges: Identifies nodes who are heavily linked to by multiple network clusters
+# Description: When analyzing partitioned networks, it is sometimes helpful to know not only which nodes are high in betweenness centrality, but also which clusters are bridged by such nodes. This function identifies high in-degree nodes whose links are relatively evenly distributed across at least two clusters.
+# Arguments:
+    # nodes_data: A community-partition dataset of the type exported by get_top_communities.
+    # edges_data: An edgelist of the type exported by t2e.
+    # threshold: A float variable greater than 0 and less than 1 representing the minimum proportion of internal links a given top node needs to receive from an external cluster to count as a bridge. For example, for node DF in cluster A where the external cluster most connected to DF is B, setting threshold to 0.5 means that for DF to count as a bridge, the number of links DF receives from B must equal at least 50% of the links it receives from A.
+    # propor: A float variable greater than 0 and less than 1 representing the proportion of top in-degree nodes to extract from each community. Default is 0.01 (1%). Increasing this number will increase processing time.
+    # verbose: If set to 'ON,' the shell will print a message every time a new node is added to the bridge list. Default is 'OFF.'
+# Output: A list of lists, each of which contains a bridge node's in-degree (at index 0), its name (at index 1), and a dict in which each key is a cluster ID and each value is the N of links the node received from that cluster (at index 2). Note: the cluster ID of the bridge node is not explicitly listed in this variable, but it is almost always the ID with the highest N of received links.
+    
+def get_bridges(nodes_data,edges_data,threshold=0.5,propor=0.01,verbose='OFF'):
+    nodes = load_data(nodes_data)
+    if type(nodes_data) is str:
+        del nodes[0]
+    edges = load_data(edges_data)
+    topnodes = _get_top_nodes(nodes,propor)
+    
+    cmty_list = list(topnodes.keys())
+    node_dict = {i[0]:i[1] for i in nodes} #create dict of node names and community IDs
+    bridge_cands = {}
+    
+    for cmty in topnodes:
+        for name in topnodes[cmty]:
+            if verbose == 'ON':
+                print('Analyzing node "' + name + '".')
+            user_edges = []
+            
+            for i in edges: #pull all edges of which node is the recipient
+                if name == i[1]:
+                    user_edges.append(i)
+            
+            ue_minus = [i for i in user_edges if i[0] in node_dict] #remove all nodes not in the top N communities
+            cmty_rts = {}
+            
+            for i in cmty_list:
+                for j in ue_minus:
+                    if node_dict[j[0]] == i:
+                        if i in cmty_rts:
+                            cmty_rts[i] += 1
+                        else:
+                            cmty_rts[i] = 1
+                            
+            list_rts_ct = sorted(list(cmty_rts.values()),reverse=True)
+            if len(cmty_rts) >= 2 and list_rts_ct[1] >= list_rts_ct[0]*threshold: #the N of ties to the 2nd-highest community must equal or exceed a minimum proportion of the N of ties to the highest community
+                if verbose == 'ON':
+                    print('Node "' + name + '" added to the list.')
+                bridge_cands[name] = cmty_rts
+                
+    bridge_list = []
+    for i in bridge_cands:
+        bridge_list.append([sum(bridge_cands[i].values()),i,bridge_cands[i]])
+        
+    bridge_list = sorted(bridge_list,reverse=True)
+    
+    return bridge_list
+
+# get_top_hashtags: Collects the most-used hashtags in each cluster in descending order of popularity
+# Description: This function collects the most-used hashtags in a set of tweets that's been partitioned into clusters and organizes them first by cluster and then in descending order of popularity.
+# Arguments:
+    # tweets_data: a path to a CSV file (the only delimiter currently allowed is commas) with tweet authors listed in col 1 and corresponding tweet text in col 2. If col 1 contains any text, col 2 must as well, and vice versa.
+    # nodes_data: A community-partition dataset of the type exported by get_top_communities.
+    # min: The minimum number of times a hashtag must have been used in a given cluster to be included in that cluster's list. Default is 10.
+# Output: A dict whose keys are cluster IDs and whose values are lists, each of which contains one cluster's top hashtags arranged in descending order of popularity.
+    
+def get_top_hashtags(tweets_data,nodes_data,min=10):
+    tweets = load_data(tweets_data)
+    if type(tweets_data) is str:
+        del tweets[0]
+        
+    nodes = load_data(nodes_data)
+    if type(nodes_data) is str:
+        del nodes[0]
+
+    clust_uniq = list(set([i[1] for i in nodes]))
+    node_dict = {i[0]:i[1] for i in nodes}
+    tweets = [[i[0].lower(),i[1].lower()] for i in tweets if i[0].lower() in node_dict]
+    ht_dict = {}
+
+    for id in clust_uniq:
+        g_tmp = [' ' + re.sub(r'[\\\"\'\.\,\-\:“”()!&\[\]]','',t[1]).lower().replace(u'\u200F','') + ' ' for t in tweets if t[1].find('#') > -1 and node_dict[t[0]] == id] #fills in the list g_tmp with hashtags, lowercased, space-padded, cleaned and only if a hashmark exists in the tweet
+        g_tmp_split = [t.split('#') for t in g_tmp] #splits each tweet along #s
+        g_trg = [[t[:re.search('[\s\r\n\t]',t).start()].strip() for t in chunk if re.search('[\s\r\n\t]',t) is not None] for chunk in g_tmp_split] #strips out everything after the # sign, leaving (hopefully) a list of lists of hashtags
+        g_trg2 = [[t[t.rfind(' ')+1:].strip() for t in chunk] for chunk in g_tmp_split]
+
+        final = []
+        for hlist in g_trg: #creates final output list
+            for hashtag in hlist:
+                if len(hashtag)>0:
+                    final.append(hashtag)
+        for hlist in g_trg2: #creates final output list
+            for hashtag in hlist:
+                if len(hashtag)>0:
+                    final.append(hashtag)
+                    
+        ht_dict[id] = final
+
+    ht_top = {}
+
+    for i in ht_dict:
+        ht_ct = {}
+        for ht in ht_dict[i]:
+            if ht in ht_ct:
+                ht_ct[ht] += 1
+            else:
+                ht_ct[ht] = 1
+        ht_top[i] = ht_ct
+        
+    ht_top_sorted = {}
+
+    for i in ht_top:
+        ht_top_sorted[i] = []
+        for j in sorted(ht_top[i],key=ht_top[i].get,reverse=True):
+            if ht_top[i][j] >= min:
+                ht_top_sorted[i].append(j + ',' + str(ht_top[i][j]))
+            
+    return ht_top_sorted
