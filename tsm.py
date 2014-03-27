@@ -27,6 +27,10 @@
 
 # match_communities: Compares community membership within two networks, A and B, and gives the best match found in B for each community in A
 
+# get_bridges: Discovers which nodes bridge which communities
+
+# get_top_hashtags: Gets the most-used hashtags in each community
+
 # MODULE-WIDE VARIABLES (these need to remain the same for all functions in this module)
 
 #The var below, top_comm, is an integer representing the top N communities by node population. These will be the communities which this module's functions will manipulate. For large Twitter networks, I have found it fruitful to work with the top ten largest retweet or @-mention communities. Other things being equal, top_comm should be roughly correlated with processing time.
@@ -445,11 +449,11 @@ def match_communities(nodes_data_A,nodes_data_B,propor=0.01,threshold=0.3):
     return hidict
 
 # _get_top_nodes: Get the nodes of highest in-degree in a network
-# Desciption: This is a helper function for match_communities and get_bridges that simply loads the top (propor * 100)% of nodes by in-degree in a given network into a list.
+# Desciption: This is a helper function for match_communities and get_bridges that simply loads the top (propor * 100)% of nodes by in-degree in each community in a partitioned network into a list.
 # Arguments:
     # nodes_data: A community-partition dataset of the type exported by get_top_communities.
     # propor: A float variable greater than 0 and less than 1 representing the proportion of top in-degree nodes to extract from each community. Default is 0.01 (1%). Increasing this number will increase processing time.
-#Output: A list of the top (propor * 100)% of nodes by in-degree.
+#Output: A list of the top (propor * 100)% of nodes by in-degree in each network community.
     
 def _get_top_nodes(nodes_data,propor=0.01):
     uniq_cl = list(set([i[1] for i in nodes_data])) #creates a unique list of the top 10 clusters from each cluster file
