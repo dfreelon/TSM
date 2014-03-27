@@ -9,6 +9,8 @@ Here are some of the things TSM can do:
 * Measure the overlap between network communities to determine which ones interact more and less often
 * Get the top retweets in a Twitter dataset and rank them by N of retweets and by community
 * Track Twitter (or other) communities over time: compute similarity scores (weighted Jaccard coefficients) for partitioned network communities based on the same Twitter keyword search at two different time slices
+* Discover which nodes bridge which communities
+* Find the most-used hashtags in each community
 
 Here are TSM's requirements:
 * Python 3.x
