@@ -94,11 +94,11 @@ def t2e(tweets_file,extmode='ALL',save_prefix=''):
     with open(tweets_file,'r',encoding = enc) as f:
         reader = csv.reader(f)
         for row in reader:
-            if extmode == 'ALL_NO_ISOLATES':
+            if extmode.upper() == 'ALL_NO_ISOLATES':
                 condition = row[1].find('@')>-1
-            elif extmode == 'RTS_ONLY':
+            elif extmode.upper() == 'RTS_ONLY':
                 condition = row[1].find('RT @')>-1
-            elif extmode == 'AT_MENTIONS_ONLY':
+            elif extmode.upper() == 'AT_MENTIONS_ONLY':
                 condition = row[1].find('@')>-1 and row[1].find('RT @')==-1
             else:
                 condition = True
@@ -196,7 +196,7 @@ def get_top_communities(edges_data,return_var='NODE_MEMBERS',save_prefix=''):
     
     summary_data = [mod,node_propor,edge_propor,len(uniqmods)]
     
-    if return_var == 'NODE_MEMBERS':
+    if return_var.upper() == 'NODE_MEMBERS':
         if len(save_prefix)>0:
             outlist.insert(0,['name','community','in-degree'])
             outfile = save_prefix + '_communities.csv'
@@ -213,10 +213,11 @@ def get_top_communities(edges_data,return_var='NODE_MEMBERS',save_prefix=''):
     # nodes_data: A community-partition dataset of the type exported by get_top_communities. Can be a variable (a list of lists) or a path to a CSV file. 
     # edges_data: An edgelist of the type exported by t2e. Can be a variable (a list of lists) or a path to a CSV file.
     # verbose: If set to 'ON', the function _get_community_overlap will execute after calc_ei has finished. If set to 'ON_PAUSE', _get_community_overlap will execute but you will be prompted to press any key to proceed after calc_ei has finished. Default is 'OFF'.
+    # unweight_ties: If set to 'YES', the edgelist will be unweighted--in other words all duplicate edges will be removed. For example, if the userA->userB edge has a weight of 5 (meaning A linked to B five distinct times), the function will count that as a single tie. If unweight_ties is set to anything else, the function will include duplicate edges in the EI calculations (so each of the userA->userB edge's five weights would count as a separate edge). Default is 'YES'.
     # save_prefix: Add a string here to save your file to CSV. Your saved file will be named as follows: 'string'_communities.csv
 # Output: A dict wherein the keys are the community ID numbers and the values are their EI indices.  If save_prefix is set, this dict will also be saved as a CSV file.
         
-def calc_ei(nodes_data,edges_data,verbose='OFF',save_prefix=''):
+def calc_ei(nodes_data,edges_data,verbose='OFF',unweight_ties='YES',save_prefix=''):
 
     nodes = load_data(nodes_data)
     if(type(nodes_data) is str):
@@ -236,9 +237,10 @@ def calc_ei(nodes_data,edges_data,verbose='OFF',save_prefix=''):
     mu_top = sorted(moduniq,key=moduniq.get,reverse=True)[0:top_comm] #get the top N most populous communities
     top_nodes_list = [i for i in nodes if i[1] in mu_top]   
     top_nodes = {node[0]:node[1] for node in top_nodes_list} #create dict of screen names and community IDs
-
-    edges = list(set([i[0] + "," + i[1] for i in edges])) #unweight the edgelist--multiple RTs of B by A count as one edge
-    edges = [i.split(",") for i in edges]
+    
+    if unweight_ties.upper() == 'YES':
+        edges = list(set([i[0] + "," + i[1] for i in edges])) #unweight the edgelist--multiple links to B from A count as one edge
+        edges = [i.split(",") for i in edges]
 
     for edge in edges:
         if edge[0] in top_nodes:
@@ -274,10 +276,10 @@ def calc_ei(nodes_data,edges_data,verbose='OFF',save_prefix=''):
     mean_ei = round(sum(ei_indices.values())/len(ei_indices.values()),3)
     print("Mean EI:\t",mean_ei)
     
-    if verbose == 'ON_PAUSE':
+    if verbose.upper() == 'ON_PAUSE':
         input('Press any key to continue...')
     
-    if verbose == 'ON' or verbose == 'ON_PAUSE':
+    if verbose.upper() == 'ON' or verbose.upper() == 'ON_PAUSE':
         _get_community_overlap(mu_top,top_edges,ei_int,ei_ext)
     
     if len(save_prefix) > 0:
@@ -334,9 +336,9 @@ def _get_community_overlap(top_community_ids,top_edges,ei_int,ei_ext):
         for j in top_community_ids:
             if i != j:
                 if j in adj_out[i]:
-                    print(str(j)+"-o\t"+str(round(adj_out[i][j]/total,3)))
+                    print(str(j)+"-s\t"+str(round(adj_out[i][j]/total,3)))
                 if j in adj_in[i]:
-                    print(str(j)+"-i\t"+str(round(adj_in[i][j]/total,3)))
+                    print(str(j)+"-r\t"+str(round(adj_in[i][j]/total,3)))
 
 # get_top_rts: Gets the most-retweeted tweets in a Twitter dataset with community IDs
 # Description: This function returns a list of the most-retweeted tweets along with the community IDs of the tweet authors and retweet counts. This allows researchers to easily view the most-retweeted tweets within each community.
@@ -489,7 +491,7 @@ def get_bridges(nodes_data,edges_data,threshold=0.5,propor=0.01,verbose='OFF'):
     
     for cmty in topnodes:
         for name in topnodes[cmty]:
-            if verbose == 'ON':
+            if verbose.upper() == 'ON':
                 print('Analyzing node "' + name + '".')
             user_edges = []
             
@@ -510,7 +512,7 @@ def get_bridges(nodes_data,edges_data,threshold=0.5,propor=0.01,verbose='OFF'):
                             
             list_rts_ct = sorted(list(cmty_rts.values()),reverse=True)
             if len(cmty_rts) >= 2 and list_rts_ct[1] >= list_rts_ct[0]*threshold: #the N of ties to the 2nd-highest community must equal or exceed a minimum proportion of the N of ties to the highest community
-                if verbose == 'ON':
+                if verbose.upper() == 'ON':
                     print('Node "' + name + '" added to the list.')
                 bridge_cands[name] = cmty_rts
                 
