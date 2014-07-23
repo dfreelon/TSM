@@ -149,6 +149,7 @@ def t2e(tweets_file,extmode='ALL',save_prefix=''):
     # save_prefix: Add a string here to save your file to CSV. Your saved file will be named as follows: 'string'_communities.csv
 # Output: An object of the custom class "louvainObject" with the following attributes:
     # node_list: A list of lists containing each unique node in the largest communities as defined above by the top_comm variable, the ID of the community to which it belongs, and its in-degree.
+    # n_nodes: A dict in which the keys are community IDs and the values are integers representing the number of nodes belonging to each community
     # n_communities: An integer representing the total number of communities detected by the algorithm.
     # modularity: The network's modularity.
     # node_propor: The proportion of all nodes included within the largest communities.
@@ -243,14 +244,15 @@ def get_top_communities(edges_data,weight_edges='YES',save_prefix=''):
     # weight_edges: If set to 'NO', the edgelist will be unweighted--in other words all duplicate edges will be removed. For example, if the userA->userB edge has a weight of 5 (meaning A linked to B five distinct times), the function will count that as a single tie. If unweight_edges is set to anything else, the function will include duplicate edges in the EI calculations (so each of the userA->userB edge's five weights would count as a separate edge). Default is 'YES'.
     # save_prefix: Add a string here to save your file to CSV. Your saved file will be named as follows: 'string'_communities.csv
 # Output: An object of the custom class "eiObject" containing the following mandatory attributes:
+    # n_nodes: A dict in which the keys are community IDs and the values are integers representing the number of nodes belonging to each community
     # index: An OrderedDict in which the keys are community IDs and the values are corresponding EI indices.
-    # internal: An OrderedDict in which the keys are community IDs and the values are counts of internal edges.
-    # external: An OrderedDict in which the keys are community IDs and the values are counts of external edges.
-    # mean: The mean of the EI indices from index.
+    # internal_ties: An OrderedDict in which the keys are community IDs and the values are counts of internal edges.
+    # external_ties: An OrderedDict in which the keys are community IDs and the values are counts of external edges.
+    # mean_ei: The mean of the EI indices from index.
     # If verbose is set to "ON" or "ON_PAUSE," the returned eiObject will include the following optional attributes:
-        # total: An OrderedDict in which the keys are community IDs and the values are total counts of all links involving a community member.
-        # received: An OrderedDict in which each key is a community ID and each value is a count of all links wherein the recipient is a community member.
-        # sent: An OrderedDict in which each key is a community ID and each value is a count of all links wherein the sender is a community member.
+        # total_ties: An OrderedDict in which the keys are community IDs and the values are total counts of all links involving a community member.
+        # received_ties: An OrderedDict in which each key is a community ID and each value is a count of all links wherein the recipient is a community member.
+        # sent_ties: An OrderedDict in which each key is a community ID and each value is a count of all links wherein the sender is a community member.
         # r_s: An OrderedDict in which each key is a community ID and each value is the received count minus the sent count.
         # adj_in: An OrderedDict of dicts in which each key is a community ID (A), each second-level key is a community ID (B), and each second-level value is the number of edges originating in B and pointing to A.
         # adj_out: An OrderedDict of dicts in which each key is a community ID (A), each second-level key is a community ID (B), and each second-level value is the number of edges originating in A and pointing to B.
