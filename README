@@ -11,6 +11,7 @@ Here are some of the things TSM can do:
 * Track Twitter (or other) communities over time: compute similarity scores (weighted or unweighted Jaccard coefficients) for partitioned network communities based on the same Twitter keyword search at two different time slices
 * Discover which nodes bridge which communities
 * Find the most-used hashtags in each community
+* Find the most-used hyperlinks or web domains in each community
 
 Here are TSM's requirements:
 * Python 3.x (needed for Unicode support)
