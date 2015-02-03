@@ -94,7 +94,9 @@ def save_csv(outfile,data,quotes_flag='',file_mode='w'): #this assumes a list of
 # t2e: convert raw Twitter data to edgelist format
 # Description: t2e takes raw Twitter data as input and outputs an edgelist consisting of the names of the tweet authors (col 1) and the names of the nodes mentioned and/or retweeted (col 2). 
 # Arguments: 
-    # tweets_file: a path to a CSV file (the only delimiter currently allowed is commas) with tweet authors listed in col 1 and corresponding tweet text in col 2. If col 1 contains any text, col 2 must as well, and vice versa.
+    # tweet_data: One of two things:
+        # 1. a string representing a path to a comma-delimited CSV file with tweet authors listed in col 1 and corresponding tweet text in col 2, OR 
+        # 2. a list of lists wherein all second-degree lists have a len of 2 with a tweet author at index 0 and a corresponding fulltext tweet at index 1. 
     # extmode: see below
     # save_prefix: Add a string here to save your file to CSV. Your saved file will be named as follows: 'string'_edgelist.csv
 # Output: An edgelist in the form of a Python list of lists. If save_prefix is set, the edgelist will also be saved as a CSV file.
@@ -106,26 +108,30 @@ def save_csv(outfile,data,quotes_flag='',file_mode='w'): #this assumes a list of
 # AT_MENTIONS_ONLY = non-retweets (@-mentions) only, exclude isolates
 # REPLIES_ONLY = only tweets in which the first or second character is an "@," exclude isolates
 
-def t2e(tweets_file,extmode='ALL',save_prefix=''):
+def t2e(tweet_data,extmode='ALL',save_prefix=''):
     g_src = []
     g_tmp = []
     
-    with open(tweets_file,'r',encoding = enc,errors='replace') as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if extmode.upper() == 'ALL_NO_ISOLATES':
-                condition = row[1].find('@')>-1
-            elif extmode.upper() == 'RTS_ONLY':
-                condition = row[1].find('RT @')>-1
-            elif extmode.upper() == 'AT_MENTIONS_ONLY':
-                condition = row[1].find('@')>-1 and row[1].find('RT @')==-1
-            elif extmode.upper() == 'REPLIES_ONLY':
-                condition = row[1].find('@')==0 or row[1].find('@')==1
-            else:
-                condition = True
-            if condition is True:
-                g_src.append(row[0].lower().strip())
-                g_tmp.append(' ' + row[1] + ' ')
+    if type(tweet_data) is str:
+        f = open(tweet_data,'r',encoding = enc,errors = 'replace')
+        tweet_data = csv.reader(f)
+        
+    for row in tweet_data:
+        if extmode.upper() == 'ALL_NO_ISOLATES':
+            condition = row[1].find('@')>-1
+        elif extmode.upper() == 'RTS_ONLY':
+            condition = row[1].find('RT @')>-1
+        elif extmode.upper() == 'AT_MENTIONS_ONLY':
+            condition = row[1].find('@')>-1 and row[1].find('RT @')==-1
+        elif extmode.upper() == 'REPLIES_ONLY':
+            condition = row[1].find('@')==0 or row[1].find('@')==1
+        else:
+            condition = True
+        if condition is True:
+            g_src.append(row[0].lower().strip())
+            g_tmp.append(' ' + row[1] + ' ')
+    if type(tweet_data) is str: 
+        f.close()
 
     g_tmp = [t.split('@') for t in g_tmp] #splits each tweet along @s
     g_trg = [[t[:re.search('[^A-Za-z0-9_]',t).start()].lower().strip() for t in chunk if re.search('[^A-Za-z0-9_]',t) is not None] for chunk in g_tmp] #strips out everything after the @ sign and trailing colons, leaving (hopefully) a list of lists of node names
@@ -465,7 +471,7 @@ def get_top_rts(tweets_file,nodes_data,min_rts=5,save_prefix=''):
     rts = []
     
     nodes = load_data(nodes_data)
-    if type(nodes_data) is str:
+    if nodes_data[0][0] == 'name':
         del nodes[0]
     
     with open(tweets_file,'r',encoding=enc,errors='replace') as f:
@@ -679,7 +685,7 @@ def _filter_nodes(nodes_data,nodes_filter=0.01):
     # nodes_data: A community-partition dataset of the type exported by get_top_communities.
     # edges_data: An edgelist of the type exported by t2e.
     # threshold: A float variable greater than 0 and less than 1 representing the minimum proportion of internal links a given top node needs to receive from an external community to count as a bridge. For example, for node DF in community A where the external community most connected to DF is B, setting threshold to 0.5 means that for DF to count as a bridge, the number of links DF receives from B must equal at least 50% of the links it receives from A.
-    # propor: A float variable greater than 0 and less than 1 representing the proportion of top in-degree nodes to extract from each community. Default is 0.01 (1%). Increasing this number will increase processing time.
+    # nodes_filter: This variable can be either a float greater than 0 and less than 1 or a list of node names. If the former, it represents the proportion of top in-degree nodes to extract from each community. If the latter, it represents the collection of nodes to search for in each community. Default is 0.01 (1%). Increasing the float or list size will increase processing time.
     # verbose_flag: If set to 'VERBOSE,' the shell will print a message every time a new node is added to the bridge list. Default is ''.
     # zeropad_flag: Normally, if a node from Community A receives no edges from Community B, get_bridges will omit community B from that node's dict of received links. If zeropad_flag is set to 'ZEROPAD', for each community like B, get_bridges will create a new dict item whose value is 0 (whereas otherwise that dict item would simply not exist). 
 # Output: A list of lists, each of which contains a bridge node's in-degree (at index 0), its name (at index 1), and a dict in which each key is a community ID and each value is the N of links the node received from that community (at index 2). Note: the community ID of the bridge node is not explicitly highlighted in this variable, but it is almost always the ID with the highest N of received links.
