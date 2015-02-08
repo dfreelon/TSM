@@ -11,6 +11,7 @@ analyzing Twitter and Twitter-like (i.e., very sparse, directed)
 network data. I wrote it for my own research purposes but thought
 someone out there might find it useful.
 
+
 Here are some of the things TSM can do:
 
 - Extract retweets and @-mentions into edgelist format for network
@@ -31,7 +32,9 @@ Here are some of the things TSM can do:
 - Find the most-used hashtags in each community
 - Find the most-used hyperlinks or web domains in each community
 
+
 Here's what you need to use TSM:
+
 - ``tsm.py``, the TSM Python module provided here
 - ``community3.py``, a version of Thomas Aynaud's Python
   `implementation`_ of the Louvain method of network community
@@ -45,11 +48,13 @@ Here's what you need to use TSM:
 .. _NetworkX: http://networkx.github.io/
 .. _Python: https://www.python.org/
 
+
 See ``tsm.py`` for a full description of TSM's functions and how to
 use them. The module should work as long as NetworkX is installed and
 ``community3.py`` and ``tsm.py`` are placed in the same directory.
 ``tsm_test2.py`` contains code examples, but requires raw Twitter data
 to function properly (details in the file itself).
+
 
 I gratefully acknowledge funding support from the US Institute of
 Peace in creating this module.
