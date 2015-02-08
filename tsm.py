@@ -35,12 +35,6 @@
 
 # prox_grid: Coaxes output of _get_community_proximity into a convenient grid format
 
-# MODULE-WIDE VARIABLES (these need to remain the same for all functions in this module)
-
-#Change the text encoding below. If 'utf-8' produces garbage and your data are in English, try 'latin1'
-
-enc = 'utf-8'
-
 # REQUIRED MODULES
 
 #Below are all the dependencies this module requires. Everything except NetworkX and community3.py comes standard with Python. You can get NetworkX here: http://networkx.github.io/ . Beware, it can be a bit tricky to install. You'll also need Thomas Aynaud's implementation of the Louvain method for community detection, but you must use the version I modified to work with Python 3 (community3.py)--otherwise the only TSM function that will work is t2e. (Aynaud's original 2.x-compliant version is available here: http://perso.crans.org/aynaud/communities/) 
@@ -59,10 +53,11 @@ import re
 # load_data: load data from a string or variable
 # Arguments:
     # data: If load_data is fed a string, it assumes it is a path to a CSV file and attempts to load the contents into a list of lists. If it is fed a variable, it creates a deep copy.
+    # enc: the character encoding of the file you're trying to open. See https://docs.python.org/3.4/library/codecs.html#standard-encodings
 # Output:
     # A list of lists representing the contents of a CSV file, or a deep copy of a variable.
 
-def load_data(data):
+def load_data(data,enc='utf-8'):
     if type(data) is str:
         csv_data = []
         with open(data,'r',encoding = enc,errors = 'replace') as f:
@@ -75,15 +70,16 @@ def load_data(data):
 
 # save_csv: save tabular data to a CSV file
 # Arguments:
-    # outfile: a string representing the filename to save to.
+    # filename: a string representing the filename to save to.
     # data: a list of lists containing your data. If fed anything else, save_csv may behave erratically.
     # quotes_flag: If this flag is set to 'USE_QUOTES', save_csv will place quote marks around each value before saving to disk. Note: this flag will also convert all double quotes to single quotes to avoid delimiter confusion. If the flag is set to anything else, quotes will be omitted.
     # file_mode: a string variable representing any of the standard modes for the open function. See https://docs.python.org/3.4/library/functions.html#open
+    # enc: the character encoding for the file you're trying to save. See https://docs.python.org/3.4/library/codecs.html#standard-encodings
 # Output:
     # save_csv returns nothing, but should leave a text file in the Python's current working directory containing the data in the data variable, assuming that directory is writeable. 
     
-def save_csv(outfile,data,quotes_flag='',file_mode='w'): #this assumes a list of lists wherein the second-level list items contain no commas
-    with open(outfile,file_mode,encoding = enc) as out:
+def save_csv(filename,data,quotes_flag='',file_mode='w',enc='utf-8'): #this assumes a list of lists wherein the second-level list items contain no commas
+    with open(filename,file_mode,encoding = enc) as out:
         for line in data:
             if quotes_flag.upper() == "USE_QUOTES":
                 row = '"' + '","'.join([str(i).replace('"',"'") for i in line]) + '"' + "\n"
@@ -95,9 +91,10 @@ def save_csv(outfile,data,quotes_flag='',file_mode='w'): #this assumes a list of
 # Description: t2e takes raw Twitter data as input and outputs an edgelist consisting of the names of the tweet authors (col 1) and the names of the nodes mentioned and/or retweeted (col 2). 
 # Arguments: 
     # tweet_data: One of two things:
-        # 1. a string representing a path to a comma-delimited CSV file with tweet authors listed in col 1 and corresponding tweet text in col 2, OR 
-        # 2. a list of lists wherein all second-degree lists have a len of 2 with a tweet author at index 0 and a corresponding fulltext tweet at index 1. 
+        # 1. a string representing a path to a comma-delimited CSV file with tweet author screen names listed in col 1 and corresponding tweet text in col 2, OR 
+        # 2. a list of lists wherein each second-degree list has a len of 2 with a tweet author screen name at index 0 and a corresponding fulltext tweet at index 1. 
     # extmode: see below
+    # enc: the character encoding of the file you're trying to open. See https://docs.python.org/3.4/library/codecs.html#standard-encodings
     # save_prefix: Add a string here to save your file to CSV. Your saved file will be named as follows: 'string'_edgelist.csv
 # Output: An edgelist in the form of a Python list of lists. If save_prefix is set, the edgelist will also be saved as a CSV file.
 
@@ -108,7 +105,7 @@ def save_csv(outfile,data,quotes_flag='',file_mode='w'): #this assumes a list of
 # AT_MENTIONS_ONLY = non-retweets (@-mentions) only, exclude isolates
 # REPLIES_ONLY = only tweets in which the first or second character is an "@," exclude isolates
 
-def t2e(tweet_data,extmode='ALL',save_prefix=''):
+def t2e(tweet_data,extmode='ALL',enc='utf-8',save_prefix=''):
     g_src = []
     g_tmp = []
     
@@ -132,7 +129,7 @@ def t2e(tweet_data,extmode='ALL',save_prefix=''):
             g_tmp.append(' ' + row[1] + ' ')
     if type(tweet_data) is str: 
         f.close()
-
+        
     g_tmp = [t.split('@') for t in g_tmp] #splits each tweet along @s
     g_trg = [[t[:re.search('[^A-Za-z0-9_]',t).start()].lower().strip() for t in chunk if re.search('[^A-Za-z0-9_]',t) is not None] for chunk in g_tmp] #strips out everything after the @ sign and trailing colons, leaving (hopefully) a list of lists of node names
     for line in g_trg:
@@ -464,17 +461,18 @@ def _get_community_proximity(top_community_ids,top_edges,ei_int,ei_ext,n_nodes,v
     # tweets_file: A CSV file containing tweets formatted for t2e as specified above. 
     # nodes_data: A community-partition dataset of the type exported by get_top_communities. Can be a variable (a list of lists) or a path to a CSV file. 
     # min_rts: An integer indicating the minimum number of retweets to be included in the output. Default is 5. Increasing this number will reduce your filesize and processing time; decreasing it will do the opposite.
+    # enc: the character encoding of the file you're trying to open and/or save. See https://docs.python.org/3.4/library/codecs.html#standard-encodings
     # save_prefix: Add a string here to save your file to CSV. Your saved file will be named as follows: 'string'_top_RTs.csv
 # Output: A list of lists, each of which contains the name of the retweeted user, the full text of the retweet, the user's community ID, and the number of times the tweet was retweeted. This list is ranked in descending order of retweet count.
 
-def get_top_rts(tweets_file,nodes_data,min_rts=5,save_prefix=''):
+def get_top_rts(tweets_file,nodes_data,min_rts=5,enc='utf-8',save_prefix=''):
     rts = []
     
     nodes = load_data(nodes_data)
     if nodes_data[0][0] == 'name':
         del nodes[0]
     
-    with open(tweets_file,'r',encoding=enc,errors='replace') as f:
+    with open(tweets_file,'r',encoding = enc,errors='replace') as f:
         reader = csv.reader(f)
         for row in reader:
             if row[1].startswith('RT @') and row[1].find(':')>-1:
@@ -510,7 +508,7 @@ def get_top_rts(tweets_file,nodes_data,min_rts=5,save_prefix=''):
                 top_rts_out[i][j] = '"' + top_rts_out[i][j] + '"'
         top_rts_out.insert(0,['"rted_user"','"rt_text"','"community"','"n_rts"'])
         out_fn = save_prefix + '_top_RTs.csv'
-        save_csv(out_fn,top_rts_out)
+        save_csv(out_fn,top_rts_out,'','w',enc)
         print('RT file "'+out_fn+'" exported.')
         return top_rts_out[1:]
     
@@ -818,7 +816,7 @@ def get_top_links(tweets_data,nodes_data,min=10,domains_flag=''):
     links_dict = {}
 
     for id in clust_uniq:
-        g_tmp = [' ' + re.sub(r'[\\\"\'“”\[\]\>\<]','',t[1]).lower().replace(u'\u200F','') + ' ' for t in tweets if t[1].find('http://') > -1 and node_dict[t[0]] == id] #fills in the list g_tmp with hyperlinks, lowercased, space-padded, cleaned and only if 'http://' exists in the tweet
+        g_tmp = [' ' + re.sub(r'[\\"\'“”\[\]><]','',t[1]).lower().replace(u'\u200F','') + ' ' for t in tweets if t[1].find('http://') > -1 and node_dict[t[0]] == id] #fills in the list g_tmp with hyperlinks, lowercased, space-padded, cleaned and only if 'http://' exists in the tweet
         g_tmp_split = [t.split('http://') for t in g_tmp] #splits each tweet along 'http://'s
         g_trg = [[t[:re.search('[\s\r\n\t]',t).start()].strip() for t in chunk if re.search('[\s\r\n\t]',t) is not None] for chunk in g_tmp_split] #strips out everything after the 'http://', leaving (hopefully) a list of lists of hyperlinks
 
@@ -869,7 +867,7 @@ def _count_cmty_dups(dup_dict,min):
     # Indices 1 through k of the first row contain all k communities represented in the eiObject. Index 0 is left blank.
     # The 0 indices of all remaining rows also contain all k communities represented in the eiObject. Thus the grid always has a size of k+1 x k+1.
     # Each off-diagonal grid "cell" represents either the proportion (if n_prop is set to 'PROPOR') or count (if not) of edges received or sent by the community indicated by index 0 of the given row from or to the community indicated on the first row (the "column"). Diagonal grid cells represent the proportions or counts of internal edges of the community indicated by index 0 of the given row.
-    # Grids created by prox_grid can easily be viewed in the shell using the following code (where ei is a variable of type eiObject):
+    # Grids created by prox_grid can easily be viewed in the shell using the following code (where ei is a variable of type eiObject created with the 'PROX' flag):
     # testgrid = prox_grid(ei)
     # for i in testgrid:
     #     print(i)
