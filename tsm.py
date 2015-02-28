@@ -63,7 +63,8 @@ def load_data(data,enc='utf-8'):
         with open(data,'r',encoding = enc,errors = 'replace') as f:
             reader = csv.reader((line.replace('\0','') for line in f)) #remove NULL bytes
             for row in reader:
-                csv_data.append(row)
+                if row != []:
+                    csv_data.append(row)
         return csv_data
     else:
         return copy.deepcopy(data)

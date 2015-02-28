@@ -40,8 +40,13 @@ class TestLoadData(unittest.TestCase):
         self.assertEqual(result, [['one', 'two', 'three'], ['1', '2', '3']])
 
     def test_strips_null_bytes_from_csv(self):
-        # This doesn't check for the case when a file ends "blah\n\0"
         fake_file = io.StringIO('\0one,t\0wo,three\n1\0,2,3\0\n')
+        with mock.patch('builtins.open', return_value=fake_file):
+            result = tsm.load_data('path')
+        self.assertEqual(result, [['one', 'two', 'three'], ['1', '2', '3']])
+
+    def test_strips_empty_lines_from_csv(self):
+        fake_file = io.StringIO('\0one,t\0wo,three\n\n1\0,2,3\n\0')
         with mock.patch('builtins.open', return_value=fake_file):
             result = tsm.load_data('path')
         self.assertEqual(result, [['one', 'two', 'three'], ['1', '2', '3']])
