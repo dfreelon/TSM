@@ -40,7 +40,7 @@
 #Below are all the dependencies this module requires. Everything except NetworkX and community3.py comes standard with Python. You can get NetworkX here: http://networkx.github.io/ . Beware, it can be a bit tricky to install. You'll also need Thomas Aynaud's implementation of the Louvain method for community detection, but you must use the version I modified to work with Python 3 (community3.py)--otherwise the only TSM function that will work is t2e. (Aynaud's original 2.x-compliant version is available here: http://perso.crans.org/aynaud/communities/) 
 
 import collections
-import community3
+import community
 import copy
 import csv
 import networkx as nx
