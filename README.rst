@@ -36,15 +36,14 @@ Here are some of the things TSM can do:
 Here's what you need to use TSM:
 
 - ``tsm.py``, the TSM Python module provided here
-- ``community3.py``, a version of Thomas Aynaud's Python
+- ``python-louvain``, Thomas Aynaud's Python
   `implementation`_ of the Louvain method of network community
-  detection, modified to work with Python 3.x. It's included here with
-  TSM.
+  detection. 
 - `NetworkX`_, a widely-used Python module for general network
-  analysis
+  analysis. 
 - `Python`_ 3.x (needed for Unicode support)
 
-.. _implementation: http://perso.crans.org/aynaud/communities/
+.. _implementation: https://bitbucket.org/taynaud/python-louvain
 .. _NetworkX: http://networkx.github.io/
 .. _Python: https://www.python.org/
 
