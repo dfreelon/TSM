@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 # TSM (Twitter Subgraph Manipulator) for Python 3
-# release 4 (01/26/14)
+# release 4 (01/26/15)
 # (c) 2014, 2015 by Deen Freelon <dfreelon@gmail.com>
 # Distributed under the BSD 3-clause license. See LICENSE.txt or http://opensource.org/licenses/BSD-3-Clause for details.
 
@@ -37,10 +37,10 @@
 
 # REQUIRED MODULES
 
-#Below are all the dependencies this module requires. Everything except NetworkX and community3.py comes standard with Python. You can get NetworkX here: http://networkx.github.io/ . Beware, it can be a bit tricky to install. You'll also need Thomas Aynaud's implementation of the Louvain method for community detection, but you must use the version I modified to work with Python 3 (community3.py)--otherwise the only TSM function that will work is t2e. (Aynaud's original 2.x-compliant version is available here: http://perso.crans.org/aynaud/communities/) 
+#Below are all this module's dependencies. Everything except NetworkX and community comes standard with Python. You can get NetworkX here: http://networkx.github.io/ or through pip. You'll also need Thomas Aynaud's implementation of the Louvain method for community detection (python-louvain), which is available here: https://bitbucket.org/taynaud/python-louvain or through pip. (Note that only the Py3-compliant version 0.4 of this module will work with TSM.) 
 
 import collections
-import community3
+import community
 import copy
 import csv
 import networkx as nx
@@ -104,54 +104,55 @@ def save_csv(filename,data,quotes_flag='',file_mode='w',enc='utf-8'): #this assu
 # ALL_NO_ISOLATES = do not differentiate between retweets and non-retweets, exclude isolates
 # RTS_ONLY = retweets only, exclude isolates
 # AT_MENTIONS_ONLY = non-retweets (@-mentions) only, exclude isolates
-# REPLIES_ONLY = only tweets in which the first or second character is an "@," exclude isolates
+# REPLIES_ONLY = only tweets in which the first or second character is an "@", exclude isolates
 
 def t2e(tweet_data,extmode='ALL',enc='utf-8',save_prefix=''):
-    g_src = []
-    g_tmp = []
-    
+    authors = []
+    tweets = []
+    final = []
+
     if type(tweet_data) is str:
         f = open(tweet_data,'r',encoding = enc,errors = 'replace')
         tweet_data = csv.reader(f)
-        
+
     for row in tweet_data:
         if extmode.upper() == 'ALL_NO_ISOLATES':
-            condition = row[1].find('@')>-1
+            condition = '@' in row[1]
         elif extmode.upper() == 'RTS_ONLY':
-            condition = row[1].find('RT @')>-1
+            condition = 'rt @' in row[1].lower()
         elif extmode.upper() == 'AT_MENTIONS_ONLY':
-            condition = row[1].find('@')>-1 and row[1].find('RT @')==-1
+            condition = '@' in row[1] and 'rt @' not in row[1].lower()
         elif extmode.upper() == 'REPLIES_ONLY':
             condition = row[1].find('@')==0 or row[1].find('@')==1
         else:
             condition = True
         if condition is True:
-            g_src.append(row[0].lower().strip())
-            g_tmp.append(' ' + row[1] + ' ')
+            authors.append(row[0].lower().strip())
+            tweets.append(' ' + row[1] + ' ')
     if type(tweet_data) is str: 
         f.close()
-        
-    g_tmp = [t.split('@') for t in g_tmp] #splits each tweet along @s
-    g_trg = [[t[:re.search('[^A-Za-z0-9_]',t).start()].lower().strip() for t in chunk if re.search('[^A-Za-z0-9_]',t) is not None] for chunk in g_tmp] #strips out everything after the @ sign and trailing colons, leaving (hopefully) a list of lists of node names
-    for line in g_trg:
-        if len(line) > 1 and line[0] == '': #removes blank entries from lines mentioning at least one name
-            del line[0]
 
-    final = []
-    i = 0
+    if extmode == 'RTS_ONLY': #only the RTed username is pulled from each RT
+        for i,j in enumerate(tweets):
+            j = re.sub('[^A-Za-z0-9_@\s]','',j).lower()
+            start = j.find('rt @') + 4
+            end = j.find(' ',start)
+            rted = j[start:end]
+            if len(authors[i]) >= 1 and len(rted) >= 1:
+                final.append([authors[i],rted.strip()])
 
-    if extmode == 'RTS_ONLY':
-        for olist in g_trg: #creates final output list
-            if len(g_src[i] + olist[0]) > len(g_src[i]):
-                final.append([g_src[i],olist[0]]) #ensures that only the RTed user is captured
-            i+=1
-    else:
-        for olist in g_trg: 
-            for name in olist: #captures multiple names per tweet where applicable
-                if len(g_src[i] + name) > len(g_src[i]):
-                    final.append([g_src[i],name])
-            i+=1
-    
+    else: #the code below is necessary to pull multiple mentioned users from single tweets
+        tweets = [t.split('@') for t in tweets] #splits each tweets along @s
+        ment_users = [[t[:re.search('[^A-Za-z0-9_]',t).start()].lower().strip() for t in chunk if re.search('[^A-Za-z0-9_]',t) is not None] for chunk in tweets] #strips out everything after the @ sign and trailing colons, leaving (hopefully) a list of lists of node names
+        for line in ment_users:
+            if len(line) > 1 and line[0] == '': #removes blank entries from lines mentioning at least one name
+                del line[0]
+
+        for i,mlist in enumerate(ment_users): 
+            for name in mlist: #captures multiple names per tweets where applicable
+                if len(authors[i] + name) > len(authors[i]):
+                    final.append([authors[i],name])
+
     if len(save_prefix) > 0:
         outfile = save_prefix + '_edgelist.csv'
         save_csv(outfile,final)
@@ -191,7 +192,7 @@ def get_top_communities(edges_data,top_comm=10,weight_flag='WEIGHT_EDGES',save_p
     non_net = nx.Graph()
     non_net.add_edges_from(edge_list)
     print("Non-directed network created.")
-    allmods = community3.best_partition(non_net)
+    allmods = community.best_partition(non_net)
     print("Community partition complete.")
     uniqmods = {}
 
@@ -233,7 +234,7 @@ def get_top_communities(edges_data,top_comm=10,weight_flag='WEIGHT_EDGES',save_p
         top_edge_list = list(set([i[0] + "," + i[1] for i in top_edge_list]))
         top_edge_list = [i.split(",") for i in top_edge_list]
 
-    mod = round(community3.modularity(allmods,non_net),2)
+    mod = round(community.modularity(allmods,non_net),2)
     node_propor = round((len(filtered_nodes)/len(allmods))*100,2)
     edge_propor = round((len(top_edge_list)/len(edge_list))*100,2)
     n_nodes = {}
@@ -277,6 +278,7 @@ def get_top_communities(edges_data,top_comm=10,weight_flag='WEIGHT_EDGES',save_p
         # r_s: An OrderedDict in which each key is a community ID and each value is the received count minus the sent count.
         # adj_in: An OrderedDict of dicts in which each key is a community ID (A), each second-level key is a community ID (B), and each second-level value is the number of edges originating in B and pointing to A.
         # adj_out: An OrderedDict of dicts in which each key is a community ID (A), each second-level key is a community ID (B), and each second-level value is the number of edges originating in A and pointing to B.
+        
 class eiObject:
     '''an object class with attributes for various EI-index-related data and metadata'''
     def __init__(self,n_nodes=None,ei_indices=None,internal_ties=None,external_ties=None,mean_ei=None,total_ties=None,received_ties=None,sent_ties=None,r_s=None,adj_in=None,adj_out=None):
@@ -772,17 +774,17 @@ def get_top_hashtags(tweets_data,nodes_data,min=10):
     ht_dict = {}
 
     for id in clust_uniq:
-        g_tmp = [' ' + re.sub(r'[\\\"\'\.\,\-\:“”()!&\[\]]','',t[1]).lower().replace(u'\u200F','') + ' ' for t in tweets if t[1].find('#') > -1 and node_dict[t[0]] == id] #fills in the list g_tmp with hashtags, lowercased, space-padded, cleaned and only if a hashmark exists in the tweet
-        g_tmp_split = [t.split('#') for t in g_tmp] #splits each tweet along #s
-        g_trg = [[t[:re.search('[\s\r\n\t]',t).start()].strip() for t in chunk if re.search('[\s\r\n\t]',t) is not None] for chunk in g_tmp_split] #strips out everything after the # sign, leaving (hopefully) a list of lists of hashtags
-        g_trg2 = [[t[t.rfind(' ')+1:].strip() for t in chunk] for chunk in g_tmp_split]
+        tweets = [' ' + re.sub(r'[\\\"\'\.\,\-\:“”()!&\[\]]','',t[1]).lower().replace(u'\u200F','') + ' ' for t in tweets if t[1].find('#') > -1 and node_dict[t[0]] == id] #fills in the list tweets with hashtags, lowercased, space-padded, cleaned and only if a hashmark exists in the tweet
+        tweets_split = [t.split('#') for t in tweets] #splits each tweet along #s
+        f_hashtags = [[t[:re.search('[\s\r\n\t]',t).start()].strip() for t in chunk if re.search('[\s\r\n\t]',t) is not None] for chunk in tweets_split] #strips out everything after the # sign, leaving (hopefully) a list of lists of hashtags
+        r_hashtags = [[t[t.rfind(' ')+1:].strip() for t in chunk] for chunk in tweets_split]
 
         final = []
-        for hlist in g_trg: #creates final output list
+        for hlist in f_hashtags: #creates final output list
             for hashtag in hlist:
                 if len(hashtag)>0:
                     final.append(hashtag)
-        for hlist in g_trg2: #creates final output list
+        for hlist in r_hashtags: #creates final output list
             for hashtag in hlist:
                 if len(hashtag)>0:
                     final.append(hashtag)
@@ -817,12 +819,12 @@ def get_top_links(tweets_data,nodes_data,min=10,domains_flag=''):
     links_dict = {}
 
     for id in clust_uniq:
-        g_tmp = [' ' + re.sub(r'[\\"\'“”\[\]><]','',t[1]).lower().replace(u'\u200F','') + ' ' for t in tweets if t[1].find('http://') > -1 and node_dict[t[0]] == id] #fills in the list g_tmp with hyperlinks, lowercased, space-padded, cleaned and only if 'http://' exists in the tweet
-        g_tmp_split = [t.split('http://') for t in g_tmp] #splits each tweet along 'http://'s
-        g_trg = [[t[:re.search('[\s\r\n\t]',t).start()].strip() for t in chunk if re.search('[\s\r\n\t]',t) is not None] for chunk in g_tmp_split] #strips out everything after the 'http://', leaving (hopefully) a list of lists of hyperlinks
+        tweets = [' ' + re.sub(r'[\\"\'“”\[\]><]','',t[1]).lower().replace(u'\u200F','') + ' ' for t in tweets if t[1].find('http://') > -1 and node_dict[t[0]] == id] #fills in the list tweets with hyperlinks, lowercased, space-padded, cleaned and only if 'http://' exists in the tweet
+        tweets_split = [t.split('http://') for t in tweets] #splits each tweet along 'http://'s
+        links = [[t[:re.search('[\s\r\n\t]',t).start()].strip() for t in chunk if re.search('[\s\r\n\t]',t) is not None] for chunk in tweets_split] #strips out everything after the 'http://', leaving (hopefully) a list of lists of hyperlinks
 
         final = []
-        for hlist in g_trg: #creates final output list
+        for hlist in links: #creates final output list
             for hyperlink in hlist:
                 if len(hyperlink)>0:
                     if domains_flag.upper() == 'DOMAINS_ONLY' and hyperlink.find('/')>-1:
