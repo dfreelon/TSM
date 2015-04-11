@@ -36,7 +36,7 @@ Here are some of the things TSM can do:
 Here's what you need to use TSM:
 
 - ``tsm.py``, the TSM Python module provided here
-- ``python-louvain``, Thomas Aynaud's Python
+- `python-louvain`_, Thomas Aynaud's Python
   implementation of the Louvain method of network community
   detection. 
 - `NetworkX`_, a widely-used Python module for general network
@@ -49,8 +49,7 @@ Here's what you need to use TSM:
 
 
 See ``tsm.py`` for a full description of TSM's functions and how to
-use them. The module should work as long as NetworkX is installed and
-``community3.py`` and ``tsm.py`` are placed in the same directory.
+use them. The module should work as long as NetworkX and ``python-louvain`` are installed.
 ``tsm_test2.py`` contains code examples, but requires raw Twitter data
 to function properly (details in the file itself).
 
