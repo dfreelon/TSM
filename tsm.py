@@ -123,26 +123,27 @@ def t2e(tweet_data,extmode='ALL',enc='utf-8',save_prefix=''):
         elif extmode.upper() == 'AT_MENTIONS_ONLY':
             condition = '@' in row[1] and 'rt @' not in row[1].lower()
         elif extmode.upper() == 'REPLIES_ONLY':
-            condition = row[1].find('@')==0 or row[1].find('@')==1
+            condition = row[1][0] == '@' or row[1][1] == '@'
         else:
             condition = True
         if condition is True:
-            authors.append(row[0].lower().strip())
-            tweets.append(' ' + row[1] + ' ')
+            authors.append(re.sub('[^A-Za-z0-9_]','',row[0].lower().strip()))
+            tweets.append(' ' + row[1].lower() + ' ')
     if type(tweet_data) is str: 
         f.close()
 
     if extmode == 'RTS_ONLY': #only the RTed username is pulled from each RT
         for i,j in enumerate(tweets):
-            j = re.sub('[^A-Za-z0-9_@\s]','',j).lower()
-            start = j.find('rt @') + 4
-            end = j.find(' ',start)
-            rted = j[start:end]
-            if len(authors[i]) >= 1 and len(rted) >= 1:
-                final.append([authors[i],rted.strip()])
+            ts = j.split('rt @')[1]
+            try:
+                rted = ts[:re.search('[^a-z0-9_]',ts).start()]
+            except AttributeError:
+                rted = ts
+            if len(authors[i]) >= 1 and authors[i] != rted: #prevents ppl from manually RTing themselves
+                final.append([authors[i],rted])
 
     else: #the code below is necessary to pull multiple mentioned users from single tweets
-        tweets = [t.split('@') for t in tweets] #splits each tweets along @s
+        tweets = [t.split('@') for t in tweets] #splits each tweet along @s
         ment_users = [[t[:re.search('[^A-Za-z0-9_]',t).start()].lower().strip() for t in chunk if re.search('[^A-Za-z0-9_]',t) is not None] for chunk in tweets] #strips out everything after the @ sign and trailing colons, leaving (hopefully) a list of lists of node names
         for line in ment_users:
             if len(line) > 1 and line[0] == '': #removes blank entries from lines mentioning at least one name
@@ -150,7 +151,7 @@ def t2e(tweet_data,extmode='ALL',enc='utf-8',save_prefix=''):
 
         for i,mlist in enumerate(ment_users): 
             for name in mlist: #captures multiple names per tweets where applicable
-                if len(authors[i] + name) > len(authors[i]):
+                if len(name) > 0:
                     final.append([authors[i],name])
 
     if len(save_prefix) > 0:
