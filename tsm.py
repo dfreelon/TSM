@@ -302,11 +302,10 @@ def calc_ei(nodes_data,edges_data,prox_flag='',weight_flag='WEIGHT_EDGES',verbos
         print("Calculating EI indices using *weighted* edges.\n")
     
     nodes = load_data(nodes_data)
-    if type(nodes_data) is str:
+    if type(nodes_data) is str or nodes[0][0] == 'name':
         del nodes[0] #remove headers from CSV
     
     edges = load_data(edges_data)
-
     modclass = [i[1] for i in nodes]
     moduniq = {}
 
@@ -865,22 +864,36 @@ def _count_cmty_dups(dup_dict,min):
 # Description: prox_grid arranges the output of _get_community_proximity into a list of lists which is printable as a grid.
 # Arguments:
     # ei_obj: a variable of type eiObject containing all the optional attributes.
-    # rec_sent: a flag determining whether the off-diagonal grid cells will represent received edges ('REC') or sent edges ('SENT'). Default is 'REC'.
+    # rec_sent: a flag determining whether the off-diagonal grid cells will represent received edges ('REC'), sent edges ('SENT'), or sent and received edges summed (TOTAL). Default is 'REC'.
     # n_prop: If set to 'PROPOR', each cell value will represent a proportion of the total edges in the community indicated by index 0 of the given row. If set to anything else, prox_grid will output raw edge counts. Default is 'PROPOR'.
 # Output: prox_grid outputs a list of lists in the following format: 
     # Indices 1 through k of the first row contain all k communities represented in the eiObject. Index 0 is left blank.
     # The 0 indices of all remaining rows also contain all k communities represented in the eiObject. Thus the grid always has a size of k+1 x k+1.
-    # Each off-diagonal grid "cell" represents either the proportion (if n_prop is set to 'PROPOR') or count (if not) of edges received or sent by the community indicated by index 0 of the given row from or to the community indicated on the first row (the "column"). Diagonal grid cells represent the proportions or counts of internal edges of the community indicated by index 0 of the given row.
+    # Each off-diagonal grid "cell" represents either the proportion (if n_prop is set to 'PROPOR') or count (if not) of edges received or sent (or both) by the community indicated by index 0 of the kth row from or to the community indicated on the kth index of the first row (the "column"). Diagonal grid cells represent the proportions or counts of internal edges of the community indicated by index 0 of the given row.
     # Grids created by prox_grid can easily be viewed in the shell using the following code (where ei is a variable of type eiObject created with the 'PROX' flag):
     # testgrid = prox_grid(ei)
     # for i in testgrid:
     #     print(i)
 
-def prox_grid(ei_obj,rec_sent='REC',n_prop='PROPOR'):
+def prox_grid(ei_obj,rec_sent='TOTAL',n_prop='PROPOR'):
     if rec_sent.upper() == 'REC':
         raw = ei_obj.adj_in
-    else:
+    elif rec_sent.upper() == 'SENT':
         raw = ei_obj.adj_out
+    else:
+        raw = {}
+        for i in ei_obj.adj_in:
+            raw[i] = {}
+            for j in ei_obj.adj_in:
+                if j in ei_obj.adj_in[i]:
+                    in_add = ei_obj.adj_in[i][j]
+                else:
+                    in_add = 0
+                if j in ei_obj.adj_out[i]:
+                    out_add = ei_obj.adj_out[i][j]
+                else:
+                    out_add = 0
+                raw[i][j] = in_add + out_add
     
     raw2 = {}
     
@@ -904,15 +917,13 @@ def prox_grid(ei_obj,rec_sent='REC',n_prop='PROPOR'):
     
     raw3 = collections.OrderedDict(sorted(raw3.items())) #put the main dict keys in order
     outlist = []
-    n = 0
     
-    for i in raw3:
+    for n,i in enumerate(raw3):
         if n_prop.upper() == 'PROPOR': #if PROPOR flag is set, divide each value by total N of ties
             outlist.append([round(j/ei_obj.total_ties[str(i)],3) for j in list(raw3[i].values())])
         else:
             outlist.append(list(raw3[i].values()))
         outlist[n].insert(0,i)
-        n += 1
     
     outlist.insert(0,['']+clist)
     return outlist
