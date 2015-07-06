@@ -671,7 +671,7 @@ def _filter_nodes(nodes_data,nodes_filter=0.01):
     if type(nodes_filter) is float:
         for i in uniq_cl:
             cltemp = [j[0] for j in nodes_data if j[1] == i]
-            pct = int(len(cltemp) * propor)
+            pct = int(len(cltemp) * nodes_filter)
             filtered_nodes[i] = [j for j in cltemp][0:pct] 
     else:
         nf2 = [[j[0],j[1]] for j in nodes_data if j[0] in nodes_filter]
