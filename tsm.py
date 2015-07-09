@@ -186,9 +186,10 @@ class louvainObject:
         self.node_propor = node_propor
         self.edge_propor = edge_propor
 
-def get_top_communities(edges_data,top_comm=10,weight_flag='WEIGHT_EDGES',save_prefix=''):
+def get_top_communities(edges_data,top_comm=10,randomize_flag='RANDOMIZE',save_prefix=''):
     edge_list = load_data(edges_data)
-    random.shuffle(edge_list)
+    if randomize_flag == 'RANDOMIZE':
+        random.shuffle(edge_list)
 
     non_net = nx.Graph()
     non_net.add_edges_from(edge_list)
@@ -228,12 +229,6 @@ def get_top_communities(edges_data,top_comm=10,weight_flag='WEIGHT_EDGES',save_p
     outlist.sort(reverse=True)
     for i in outlist:
         del i[0]
-        
-    if weight_flag.upper() != 'WEIGHT_EDGES':
-        edge_list = list(set([i[0] + "," + i[1] for i in edge_list])) #unweight the edgelist--multiple RTs of B by A count as one edge
-        edge_list = [i.split(",") for i in edge_list]
-        top_edge_list = list(set([i[0] + "," + i[1] for i in top_edge_list]))
-        top_edge_list = [i.split(",") for i in top_edge_list]
 
     mod = round(community.modularity(allmods,non_net),2)
     node_propor = round((len(filtered_nodes)/len(allmods))*100,2)
@@ -481,9 +476,7 @@ def get_top_rts(tweets_file,nodes_data,min_rts=5,enc='utf-8',save_prefix=''):
             if row[1].startswith('RT @') and row[1].find(':')>-1:
                 rts.append(row[1].lower())
 
-    node_dict = {}
-    for i in nodes:
-        node_dict[i[0]] = i[1]
+    node_dict = {i[0]:i[1] for i in nodes}
 
     dups = {}
     for i in rts:
