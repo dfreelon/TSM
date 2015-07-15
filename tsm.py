@@ -27,7 +27,7 @@
 
 # match_communities: Compares community membership within two networks, A and B, and gives the best match found in B for each community in A
 
-# get_bridges: Discovers which nodes bridge which communities
+# get_intermediaries: Discovers which nodes intermediate between which communities
 
 # get_top_hashtags: Gets the most-used hashtags in each community
 
@@ -65,15 +65,17 @@ def load_data(data,enc='utf-8'):
             for row in reader:
                 if row != []:
                     csv_data.append(row)
+        print('Data loaded from file "' + data + '".')
         return csv_data
     else:
+        print('Data loaded.')
         return copy.deepcopy(data)
 
 # save_csv: save tabular data to a CSV file
 # Arguments:
     # filename: a string representing the filename to save to.
     # data: a list of lists containing your data. If fed anything else, save_csv may behave erratically.
-    # quotes_flag: If this flag is set to 'USE_QUOTES', save_csv will place quote marks around each value before saving to disk. Note: this flag will also convert all double quotes to single quotes to avoid delimiter confusion. If the flag is set to anything else, quotes will be omitted.
+    # quotes_flag: If this flag is set to 'USE_QUOTES', save_csv will place quote marks around each value before saving to disk. This flag will also convert all double quotes to single quotes to avoid delimiter confusion. If the flag is set to anything else, quotes will be omitted.
     # file_mode: a string variable representing any of the standard modes for the open function. See https://docs.python.org/3.4/library/functions.html#open
     # enc: the character encoding for the file you're trying to save. See https://docs.python.org/3.4/library/codecs.html#standard-encodings
 # Output:
@@ -87,6 +89,7 @@ def save_csv(filename,data,quotes_flag='',file_mode='w',enc='utf-8'): #this assu
             else:
                 row = ','.join([str(i) for i in line]) + "\n"
             out.write(row)
+    print('Data saved to file "' + filename + '".')
 
 # t2e: convert raw Twitter data to edgelist format
 # Description: t2e takes raw Twitter data as input and outputs an edgelist consisting of the names of the tweet authors (col 1) and the names of the nodes mentioned and/or retweeted (col 2). 
@@ -153,7 +156,9 @@ def t2e(tweet_data,extmode='ALL',enc='utf-8',save_prefix=''):
             for name in mlist: #captures multiple names per tweets where applicable
                 if len(name) > 0:
                     final.append([authors[i],name])
-
+                    
+    print('Edge list created.')
+    
     if len(save_prefix) > 0:
         outfile = save_prefix + '_edgelist.csv'
         save_csv(outfile,final)
@@ -164,17 +169,18 @@ def t2e(tweet_data,extmode='ALL',enc='utf-8',save_prefix=''):
 # get_top_communities: Get top k communities by membership
 # Description: This function runs the Louvain method for community detection on an edgelist and returns the names within each of the top k detected communities, the community to which each name belongs, and each name's in-degree. It's basically a wrapper for Thomas Aynaud's excellent Python implementation of Louvain (original version here: http://perso.crans.org/aynaud/communities/) with a few upgrades I found useful. See Blondel, V. D., Guillaume, J. L., Lambiotte, R., & Lefebvre, E. (2008). Fast unfolding of communities in large networks. Journal of Statistical Mechanics: Theory and Experiment, 2008(10), P10008.
 # Arguments:
-    # edges_data: An edgelist of the type exported by t2e. Can be a variable (a list of lists) or a path to a CSV file.
-    #top_comm: This variable can either be an integer or a decimal (float) between 0 and 1. If an integer, it represents the top k communities by node population to be recorded. If a decimal, it represents the top (k*100)% of communities by population to be recorded. These will be the communities which this module's functions will manipulate. For large Twitter networks, I have found it fruitful to work with the top ten largest retweet or @-mention communities. The higher this integer or decimal, the longer TSM will take to process your data. Default is 10.
-    # weight_flag: If set to 'WEIGHT_EDGES', the function will include duplicate edges in the final calculations (so each of the userA->userB edge's five weights would count as a separate edge). If weight_flag is set to anything else, the edgelist will be unweighted--in other words all duplicate edges will be removed. For example, if the userA->userB edge has a weight of 5 (meaning A linked to B five distinct times), the function will count that as a single tie. This option only affects the summary statistics calculated at the end--it does not change the content of the dataset. Default is 'WEIGHT_EDGES'.
+    # edges_data: An edgelist of the type exported by t2e. Can be a list of lists or a path to a CSV file.
+    # top_comm: This variable can either be an integer or a decimal (float) between 0 and 1. If an integer, it represents the top k communities by node population to be analyzed. If a decimal, it represents the top (k*100)% of communities by population to be analyzed. These will be the communities which this module's functions will manipulate. For large Twitter networks, I have found it fruitful to work with the top ten largest retweet or @-mention communities. The higher this integer or decimal, the longer TSM will take to process your data. Enter 1.0 to analyze all communities. Default is 10.
+    # randomize_flag: If this variable is set to 'RANDOMIZE', the edgelist will be randomized before running the rest of the function. This will produce slightly different results on each run. If the variable is set to anything else, the edgelist will not be randomized and the results will always be the same. Default is 'RANDOMIZE'.
+    # prominence_metric: The network metric by which nodes will be ranked in descending order in the nodes_list of your louvainObject. This variable may be assigned any per-node metric available in NetworkX (see http://networkx.github.io/documentation/networkx-1.9.1/ ). NetworkX's methods need to be written as strings (e.g. 'in_degree'); functions need to be written with the appropriate module prefix(es) and without quotes (e.g. tsm.nx.eigenvector_centrality). Default is 'in_degree'.
     # save_prefix: Add a string here to save your file to CSV. Your saved file will be named as follows: 'string'_communities.csv
 # Output: An object of the custom class 'louvainObject' with the following attributes:
     # node_list: A list of lists containing each unique node in the largest communities as defined above by the top_comm variable, the ID of the community to which it belongs, and its in-degree.
     # n_nodes: A dict in which the keys are community IDs and the values are integers representing the number of nodes belonging to each community
     # n_communities: An integer representing the total number of communities detected by the algorithm.
-    # modularity: The network's modularity.
-    # node_propor: The proportion of all nodes included within the largest communities.
-    # edge_propor: The proportion of all edges included within the largest communities. 
+    # modularity: A float representing the network's modularity.
+    # node_propor: A float representing the proportion of all nodes included within the largest communities.
+    # edge_propor: A float representing the proportion of all edges included within the largest communities.
 
 class louvainObject:
     '''an object class with attributes for various Louvain-related data and metadata'''
@@ -186,9 +192,9 @@ class louvainObject:
         self.node_propor = node_propor
         self.edge_propor = edge_propor
 
-def get_top_communities(edges_data,top_comm=10,randomize_flag='RANDOMIZE',save_prefix=''):
+def get_top_communities(edges_data,top_comm=10,randomize_flag='RANDOMIZE',prominence_metric='in_degree',save_prefix=''):
     edge_list = load_data(edges_data)
-    if randomize_flag == 'RANDOMIZE':
+    if randomize_flag.upper() == 'RANDOMIZE':
         random.shuffle(edge_list)
 
     non_net = nx.Graph()
@@ -206,7 +212,7 @@ def get_top_communities(edges_data,top_comm=10,randomize_flag='RANDOMIZE',save_p
     
     n_communities = len(uniqmods)
     
-    if top_comm > 0 and top_comm < 1: 
+    if (top_comm > 0 and top_comm < 1) or top_comm == 1.0: 
         top_comm = int(round(n_communities * top_comm,0))
     
     top_n = sorted(uniqmods,key=uniqmods.get,reverse=True)[0:top_comm] #gets a list of the top k communities by node count as defined by the top_comm variable
@@ -217,10 +223,13 @@ def get_top_communities(edges_data,top_comm=10,randomize_flag='RANDOMIZE',save_p
             filtered_nodes[i] = allmods[i]
 
     top_edge_list = [i for i in edge_list if i[0] in filtered_nodes and i[1] in filtered_nodes]
-
+    
     di_net = nx.DiGraph()
     di_net.add_edges_from(top_edge_list)
-    ind = di_net.in_degree()
+    try:    
+        ind = getattr(di_net,prominence_metric)()
+    except (AttributeError,TypeError):
+        ind = prominence_metric(di_net)
     outlist = []
 
     for i in filtered_nodes:
@@ -246,7 +255,11 @@ def get_top_communities(edges_data,top_comm=10,randomize_flag='RANDOMIZE',save_p
     print("And",edge_propor,"% of all edges.")
     
     if len(save_prefix)>0:
-        outlist.insert(0,['name','community','in-degree'])
+        if type(prominence_metric) is str:
+            prominence_header = prominence_metric
+        else:
+            prominence_header = prominence_metric.__name__
+        outlist.insert(0,['name','community',prominence_header])
         outfile = save_prefix + '_communities.csv'
         save_csv(outfile,outlist)
     
@@ -268,9 +281,9 @@ def get_top_communities(edges_data,top_comm=10,randomize_flag='RANDOMIZE',save_p
     # external_ties: An OrderedDict in which the keys are community IDs and the values are counts of external edges.
     # mean_ei: The mean of the EI indices from index.
     # If set to "PROX" or "PROX_PAUSE," the returned eiObject will include the following optional attributes:
-        # total_ties: An OrderedDict in which the keys are community IDs and the values are total counts of all links involving a community member.
-        # received_ties: An OrderedDict in which each key is a community ID and each value is a count of all links wherein the recipient is a community member.
-        # sent_ties: An OrderedDict in which each key is a community ID and each value is a count of all links wherein the sender is a community member.
+        # total_ties: An OrderedDict in which the keys are community IDs and the values are total counts of all ties involving a community member.
+        # received_ties: An OrderedDict in which each key is a community ID and each value is a count of all ties wherein the recipient is a community member.
+        # sent_ties: An OrderedDict in which each key is a community ID and each value is a count of all ties wherein the sender is a community member.
         # r_s: An OrderedDict in which each key is a community ID and each value is the received count minus the sent count.
         # adj_in: An OrderedDict of dicts in which each key is a community ID (A), each second-level key is a community ID (B), and each second-level value is the number of edges originating in B and pointing to A.
         # adj_out: An OrderedDict of dicts in which each key is a community ID (A), each second-level key is a community ID (B), and each second-level value is the number of edges originating in A and pointing to B.
@@ -389,7 +402,7 @@ def calc_ei(nodes_data,edges_data,prox_flag='',weight_flag='WEIGHT_EDGES',verbos
     return ei_out
 
 # _get_community_proximity: Measures proximity between each community and all others
-# Description: This function reveals how a given community's "external" edges are distributed among the other communities. It is not a standalone function: it can only be run by using the "verbose" option from calc_ei. Thus, don't try to enter the following arguments into the function yourself unless you know what you're doing.
+# Description: This function reveals how a given community's "external" edges are distributed among the other communities. It is not a standalone function: it can only be run by using the "verbose" option from calc_ei. So don't try to enter the following arguments into the function yourself unless you know what you're doing.
 # Arguments:
     # top_community_ids: A list of the top k communities by membership.
     # top_edges: A list of all edges both of whose nodes belong to one of the top k communities.
@@ -530,12 +543,12 @@ def get_top_rts(tweets_file,nodes_data,min_rts=5,enc='utf-8',save_prefix=''):
 
 class cMatchObject:
     '''an object class with attributes for various matched-community data and metadata'''
-    def __init__(self,best_match=None,shared_node=None,nonzero_jacc=None,diverge=None,converge=None):
-        self.best_match = best_match
-        self.shared_node = shared_node
-        self.nonzero_jacc = nonzero_jacc
-        self.diverge = diverge
-        self.converge = converge
+    def __init__(self,best_matches=None,shared_nodes=None,nonzero_jaccs=None,divergences=None,convergences=None):
+        self.best_matches = best_matches
+        self.shared_nodes = shared_nodes
+        self.nonzero_jaccs = nonzero_jaccs
+        self.divergences = divergences
+        self.convergences = convergences
 
 def match_communities(nodes_data_A,nodes_data_B,nodes_filter=0.01,jacc_threshold=0.3,dc_threshold=0.2,weight_flag='WEIGHT_JACCARD',verbose_flag=''):
     nodesA = load_data(nodes_data_A)
@@ -641,11 +654,11 @@ def match_communities(nodes_data_A,nodes_data_B,nodes_filter=0.01,jacc_threshold
             converge[i] = conv[i]
     
     match_out = cMatchObject()
-    match_out.best_match = collections.OrderedDict(sorted(best_match.items()))
-    match_out.shared_node = collections.OrderedDict(sorted(shared_node.items()))
-    match_out.nonzero_jacc = collections.OrderedDict(sorted(nonzero_jacc.items()))
-    match_out.diverge = collections.OrderedDict(sorted(diverge.items()))
-    match_out.converge = collections.OrderedDict(sorted(converge.items()))
+    match_out.best_matches = collections.OrderedDict(sorted(best_match.items()))
+    match_out.shared_nodes = collections.OrderedDict(sorted(shared_node.items()))
+    match_out.nonzero_jaccs = collections.OrderedDict(sorted(nonzero_jacc.items()))
+    match_out.divergences = collections.OrderedDict(sorted(diverge.items()))
+    match_out.convergences = collections.OrderedDict(sorted(converge.items()))
     
     return match_out
 
@@ -657,7 +670,7 @@ def match_communities(nodes_data_A,nodes_data_B,nodes_filter=0.01,jacc_threshold
 #Output: A dict whose keys are community IDs and whose values are filtered lists of node names.
     
 def _filter_nodes(nodes_data,nodes_filter=0.01):
-    uniq_cl = list(set([i[1] for i in nodes_data])) #creates a unique list of the top 10 communities from each community file
+    uniq_cl = set([i[1] for i in nodes_data]) #creates a unique list of the top 10 communities from each community file
 
     filtered_nodes = {} #creates a dict of lists. Each list contains the top [propor*100]% most-connected nodes within each community
     
@@ -665,7 +678,7 @@ def _filter_nodes(nodes_data,nodes_filter=0.01):
         for i in uniq_cl:
             cltemp = [j[0] for j in nodes_data if j[1] == i]
             pct = int(len(cltemp) * nodes_filter)
-            filtered_nodes[i] = [j for j in cltemp][0:pct] 
+            filtered_nodes[i] = [j for j in cltemp][0:pct]
     else:
         nf2 = [[j[0],j[1]] for j in nodes_data if j[0] in nodes_filter]
         for i in uniq_cl:
@@ -673,18 +686,18 @@ def _filter_nodes(nodes_data,nodes_filter=0.01):
     
     return filtered_nodes
 
-# get_bridges: Identifies nodes who are heavily linked to by multiple network communities
-# Description: When analyzing partitioned networks, it is sometimes helpful to know not only which nodes are high in betweenness centrality, but also which communities are bridged by such nodes. This function identifies high in-degree nodes whose links are relatively evenly distributed across at least two communities.
+# get_intermediaries: Identifies nodes who are heavily connected to by multiple network communities
+# Description: When analyzing partitioned networks, it is sometimes helpful to know not only which nodes are high in betweenness centrality, but also which communities are bridged by such nodes. This function identifies high in-degree nodes whose ties are relatively evenly distributed across at least two communities.
 # Arguments:
     # nodes_data: A community-partition dataset of the type exported by get_top_communities.
     # edges_data: An edgelist of the type exported by t2e.
-    # threshold: A float variable greater than 0 and less than 1 representing the minimum proportion of internal links a given top node needs to receive from an external community to count as a bridge. For example, for node DF in community A where the external community most connected to DF is B, setting threshold to 0.5 means that for DF to count as a bridge, the number of links DF receives from B must equal at least 50% of the links it receives from A.
+    # threshold: A float variable greater than 0 and less than 1 representing the minimum proportion of internal ties a given top node needs to receive from an external community to count as a bridge. For example, for node DF where the community most connected to DF is A, setting the threshold to 0.5 means that for DF to count as a bridge, the number of ties DF receives from second most-connected community B must equal at least 50% of the ties it receives from A.
     # nodes_filter: This variable can be either a float greater than 0 and less than 1 or a list of node names. If the former, it represents the proportion of top in-degree nodes to extract from each community. If the latter, it represents the collection of nodes to search for in each community. Default is 0.01 (1%). Increasing the float or list size will increase processing time.
     # verbose_flag: If set to 'VERBOSE,' the shell will print a message every time a new node is added to the bridge list. Default is ''.
     # zeropad_flag: Normally, if a node from Community A receives no edges from Community B, get_bridges will omit community B from that node's dict of received links. If zeropad_flag is set to 'ZEROPAD', for each community like B, get_bridges will create a new dict item whose value is 0 (whereas otherwise that dict item would simply not exist). 
 # Output: A list of lists, each of which contains a bridge node's in-degree (at index 0), its name (at index 1), and a dict in which each key is a community ID and each value is the N of links the node received from that community (at index 2). Note: the community ID of the bridge node is not explicitly highlighted in this variable, but it is almost always the ID with the highest N of received links.
     
-def get_bridges(nodes_data,edges_data,bridge_threshold=0.5,nodes_filter=0.01,verbose_flag='',zeropad_flag='ZEROPAD'):
+def get_intermediaries(nodes_data,edges_data,bridge_threshold=0.5,nodes_filter=0.01,verbose_flag='',zeropad_flag='ZEROPAD'):
     nodes = load_data(nodes_data)
     if type(nodes_data) is str:
         del nodes[0]
