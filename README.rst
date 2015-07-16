@@ -51,7 +51,7 @@ Here's what you need to use TSM:
 See ``tsm.py`` for a full description of TSM's functions and how to
 use them. The module should work as long as NetworkX and ``python-louvain`` are installed.
 
-The ``TSM demo files.zip`` file contains two IPython notebooks and a Twitter ID file that can be used to demo many of TSM's functions. Code and instructions are provided to hydrate the Twitter ID file.
+The ``TSM demo files.zip`` file contains two IPython notebooks and a sample Twitter ID dataset that can be used to demo many of TSM's functions. Code and instructions are provided to hydrate the Twitter IDs.
 
 
 I gratefully acknowledge funding support from the US Institute of
