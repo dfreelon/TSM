@@ -28,7 +28,7 @@ Here are some of the things TSM can do:
   scores (weighted or unweighted Jaccard coefficients) for partitioned
   network communities drawn from the same dataset at two different
   time slices
-- Discover which nodes bridge which communities
+- Discover which nodes intermediate between which communities
 - Find the most-used hashtags in each community
 - Find the most-used hyperlinks or web domains in each community
 
@@ -51,7 +51,7 @@ Here's what you need to use TSM:
 See ``tsm.py`` for a full description of TSM's functions and how to
 use them. The module should work as long as NetworkX and ``python-louvain`` are installed.
 
-The ``TSM demo files.zip`` file contains two IPython notebooks and a sample Twitter ID dataset that can be used to demo many of TSM's functions. Code and instructions are provided to hydrate the Twitter IDs.
+The ``TSM demo files.zip`` file contains two IPython notebooks and a Twitter ID file that can be used to demo many of TSM's functions. Code and instructions are provided to hydrate the Twitter ID file.
 
 
 I gratefully acknowledge funding support from the US Institute of
