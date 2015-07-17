@@ -6,7 +6,7 @@ Twitter Subgraph Manipulator by `Deen Freelon`_
 
 .. _Deen Freelon: dfreelon@gmail.com
 
-In short, TSM is a Python module that contains a few functions for analyzing Twitter and Twitter-like (i.e., very sparse and directed with community structure) network data. I wrote it for my own research purposes but thought someone out there might find it useful.
+In short, TSM is a Python module that contains a few functions for analyzing Twitter and Twitter-like (i.e., directed and very sparse with community structure) network data. I wrote it for my own research purposes but thought someone out there might find it useful.
 
 
 Here are some of the things TSM can do:
