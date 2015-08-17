@@ -11,6 +11,7 @@ In short, TSM is a Python module that contains a few functions for analyzing Twi
 
 Here are some of the things TSM can do:
 
+- Support very large communities (millions of nodes/edges)--the only limit is your computer's memory
 - Extract retweets and @-mentions into edgelist format for network
   analysis and visualization
 - Partition networks into communities, isolate the N largest
