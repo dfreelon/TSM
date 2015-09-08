@@ -51,6 +51,11 @@ See ``tsm.py`` for a full description of TSM's functions and how to use them. Th
 The ``TSM demo files.zip`` file contains two IPython notebooks and a Twitter ID file that can be used to demo many of TSM's functions. Code and instructions are provided to hydrate the Twitter ID file. For testing purposes, here is a very brief (fabricated) sample demonstrating how input data for the ``t2e`` function should be formatted:
 
 ```python
+s = "Python syntax highlighting"
+print s
+```
+
+```python
 dgaff,"Twitter is pretty fun, isn't it, @dfreelon?"
 dfreelon,Yes indeed @dgaff - @some_other_user weigh in?
 some_other_user,Of course twitter is grand. Mostly because of @dril.
