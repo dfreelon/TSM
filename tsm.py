@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 # TSM (Twitter Subgraph Manipulator) for Python 3
-# release 4 (01/26/15)
+# release 5 (09/20/15)
 # (c) 2014, 2015 by Deen Freelon <dfreelon@gmail.com>
 # Distributed under the BSD 3-clause license. See LICENSE.txt or http://opensource.org/licenses/BSD-3-Clause for details.
 
@@ -21,7 +21,7 @@
 
 # calc_ei: Calculates the E-I index (a measure of insularity) of each community detected by get_top_communities
 
-# _get_community_proximity: An extension of calc_ei that shows how "close" each community is to all of the others in terms of shared ties
+# _get_shared_ties: An extension of calc_ei that shows how "close" each community is to all of the others in terms of shared ties
 
 # get_top_rts: Gets the most-retweeted tweets within each community
 
@@ -33,7 +33,7 @@
 
 # get_top_links: Gets the most-used hyperlinks or link domains in each community
 
-# prox_grid: Coaxes output of _get_community_proximity into a convenient grid format
+# shared_ties_grid: Coaxes output of _get_shared_ties into a convenient grid format
 
 # REQUIRED MODULES
 
@@ -75,16 +75,18 @@ def load_data(data,enc='utf-8'):
 # Arguments:
     # filename: a string representing the filename to save to.
     # data: a list of lists containing your data. If fed anything else, save_csv may behave erratically.
-    # quotes_flag: If this flag is set to 'USE_QUOTES', save_csv will place quote marks around each value before saving to disk. This flag will also convert all double quotes to single quotes to avoid delimiter confusion. If the flag is set to anything else, quotes will be omitted.
+    # use_quotes: If this flag is set to True, save_csv will add double quotes around each value before saving to disk. This flag will also convert all existing double quotes to single quotes to avoid delimiter confusion. If set to False, delimiting quotes will not be added.
     # file_mode: a string variable representing any of the standard modes for the open function. See https://docs.python.org/3.4/library/functions.html#open
     # enc: the character encoding for the file you're trying to save. See https://docs.python.org/3.4/library/codecs.html#standard-encodings
 # Output:
     # save_csv returns nothing, but should leave a text file in the Python's current working directory containing the data in the data variable, assuming that directory is writeable. 
     
-def save_csv(filename,data,quotes_flag='',file_mode='w',enc='utf-8'): #this assumes a list of lists wherein the second-level list items contain no commas
+def save_csv(filename,data,use_quotes=False,file_mode='w',enc='utf-8'): #this assumes a list of lists wherein the second-level list items contain no commas
     with open(filename,file_mode,encoding = enc) as out:
         for line in data:
-            if quotes_flag.upper() == "USE_QUOTES":
+            if type(line) is not list:
+                line = [line] #forces all items in 'data' to be lists
+            if use_quotes == True:
                 row = '"' + '","'.join([str(i).replace('"',"'") for i in line]) + '"' + "\n"
             else:
                 row = ','.join([str(i) for i in line]) + "\n"
@@ -171,7 +173,7 @@ def t2e(tweet_data,extmode='ALL',enc='utf-8',save_prefix=''):
 # Arguments:
     # edges_data: An edgelist of the type exported by t2e. Can be a list of lists or a path to a CSV file.
     # top_comm: This variable can either be an integer or a decimal (float) between 0 and 1. If an integer, it represents the top k communities by node population to be analyzed. If a decimal, it represents the top (k*100)% of communities by population to be analyzed. These will be the communities which this module's functions will manipulate. For large Twitter networks, I have found it fruitful to work with the top ten largest retweet or @-mention communities. The higher this integer or decimal, the longer TSM will take to process your data. Enter 1.0 to analyze all communities. Default is 10.
-    # randomize_flag: If this variable is set to 'RANDOMIZE', the edgelist will be randomized before running the rest of the function. This will produce slightly different results on each run. If the variable is set to anything else, the edgelist will not be randomized and the results will always be the same. Default is 'RANDOMIZE'.
+    # randomize: If this variable is set to True, the edgelist will be randomized before running the rest of the function. This will produce slightly different results on each run. If the variable is set to False, the edgelist will not be randomized and the results will always be the same. Default is True.
     # prominence_metric: The network metric by which nodes will be ranked in descending order in the nodes_list of your louvainObject. This variable may be assigned any per-node metric available in NetworkX (see http://networkx.github.io/documentation/networkx-1.9.1/ ). NetworkX's methods need to be written as strings (e.g. 'in_degree'); functions need to be written with the appropriate module prefix(es) and without quotes (e.g. tsm.nx.eigenvector_centrality). Default is 'in_degree'.
     # save_prefix: Add a string here to save your file to CSV. Your saved file will be named as follows: 'string'_communities.csv
 # Output: An object of the custom class 'louvainObject' with the following attributes:
@@ -192,15 +194,15 @@ class louvainObject:
         self.node_propor = node_propor
         self.edge_propor = edge_propor
 
-def get_top_communities(edges_data,top_comm=10,randomize_flag='RANDOMIZE',prominence_metric='in_degree',save_prefix=''):
+def get_top_communities(edges_data,top_comm=10,randomize=True,prominence_metric='in_degree',save_prefix=''):
     edge_list = load_data(edges_data)
-    if randomize_flag.upper() == 'RANDOMIZE':
+    if randomize == True:
         random.shuffle(edge_list)
 
-    non_net = nx.Graph()
-    non_net.add_edges_from(edge_list)
+    non_dir = nx.Graph()
+    non_dir.add_edges_from(edge_list)
     print("Non-directed network created.")
-    allmods = community.best_partition(non_net)
+    allmods = community.best_partition(non_dir)
     print("Community partition complete.")
     uniqmods = {}
 
@@ -239,7 +241,7 @@ def get_top_communities(edges_data,top_comm=10,randomize_flag='RANDOMIZE',promin
     for i in outlist:
         del i[0]
 
-    mod = round(community.modularity(allmods,non_net),2)
+    mod = round(community.modularity(allmods,non_dir),2)
     node_propor = round((len(filtered_nodes)/len(allmods))*100,2)
     edge_propor = round((len(top_edge_list)/len(edge_list))*100,2)
     n_nodes = {}
@@ -270,9 +272,10 @@ def get_top_communities(edges_data,top_comm=10,randomize_flag='RANDOMIZE',promin
 # Arguments:
     # nodes_data: A community-partition dataset of the type exported by get_top_communities. Can be a variable (a list of lists) or a path to a CSV file. 
     # edges_data: An edgelist of the type exported by t2e. Can be a variable (a list of lists) or a path to a CSV file.
-    # prox_flag: If set to 'PROX', the function _get_community_proximity will execute after calc_ei has finished. If set to 'PROX_PAUSE', _get_community_proximity will execute but you will be prompted to press any key to proceed after calc_ei has finished. Default is ''.
-    # weight_flag: If set to 'WEIGHT_EDGES', the edgelist will be unweighted--in other words all duplicate edges will be removed. For example, if the userA->userB edge has a weight of 5 (meaning A linked to B five distinct times), the function will count that as a single tie. If unweight_edges is set to anything else, the function will include duplicate edges in the EI calculations (so each of the userA->userB edge's five weights would count as a separate edge). Default is 'WEIGHT_EDGES'.
-    # verbose_flag: If set to 'VERBOSE', calc_ei will print some of its output to the shell prompt. If set to anything else, this output will be suppressed. Default value is ''.
+    # all_output: If set to True, the function _get_shared_ties will execute after calc_ei has finished. If set to False, _get_shared_ties will not execute. Default is True.
+    # pause: If set to True, the function will pause and wait for a key strike before displaying the results of _get_shared_ties. If set to False, it will not pause. Default is True.
+    # weight_edges: If set to True, the function will include duplicate edges in the EI calculations. If set to False, the edgelist will be unweighted--in other words all duplicate edges will be removed. For example, if the userA->userB edge has a weight of 5 (meaning A linked to B five distinct times), the function will count that as a single tie. Default is True.
+    # verbose: If set to True, calc_ei will print some of its output to the shell prompt. If set to False, this output will be suppressed. Default is False.
     # save_prefix: Add a string here to save your file to CSV. Your saved file will be named as follows: 'string'_communities.csv
 # Output: An object of the custom class "eiObject" containing the following attributes:
     # n_nodes: An OrderedDict in which the keys are community IDs and the values are integers representing the number of nodes belonging to each community
@@ -280,8 +283,8 @@ def get_top_communities(edges_data,top_comm=10,randomize_flag='RANDOMIZE',promin
     # internal_ties: An OrderedDict in which the keys are community IDs and the values are counts of internal edges.
     # external_ties: An OrderedDict in which the keys are community IDs and the values are counts of external edges.
     # mean_ei: The mean of the EI indices from index.
-    # If set to "PROX" or "PROX_PAUSE," the returned eiObject will include the following optional attributes:
-        # total_ties: An OrderedDict in which the keys are community IDs and the values are total counts of all ties involving a community member.
+    # If the all_output flag is set to True, the returned eiObject will also include the following optional attributes:
+        # total_ties: An OrderedDict in which the keys are community IDs and the values are total counts of all ties involving at least one community member.
         # received_ties: An OrderedDict in which each key is a community ID and each value is a count of all ties wherein the recipient is a community member.
         # sent_ties: An OrderedDict in which each key is a community ID and each value is a count of all ties wherein the sender is a community member.
         # r_s: An OrderedDict in which each key is a community ID and each value is the received count minus the sent count.
@@ -303,8 +306,8 @@ class eiObject:
         self.adj_out = adj_out
         self.adj_in = adj_in
         
-def calc_ei(nodes_data,edges_data,prox_flag='',weight_flag='WEIGHT_EDGES',verbose_flag='',save_prefix=''):
-    if weight_flag.upper() != 'WEIGHT_EDGES':
+def calc_ei(nodes_data,edges_data,all_output=True,pause=False,weight_edges=True,verbose=False,save_prefix=''):
+    if weight_edges == False:
         print("Calculating EI indices using *UNweighted* edges.\n")
     else:
         print("Calculating EI indices using *weighted* edges.\n")
@@ -327,7 +330,7 @@ def calc_ei(nodes_data,edges_data,prox_flag='',weight_flag='WEIGHT_EDGES',verbos
     top_nodes_list = [i for i in nodes if i[1] in mu_top]   
     top_nodes = {node[0]:node[1] for node in top_nodes_list} #create dict of screen names and community IDs
     
-    if weight_flag.upper() != 'WEIGHT_EDGES':
+    if weight_edges == False:
         edges = list(set([i[0] + "," + i[1] for i in edges])) #unweight the edgelist--multiple links to B from A count as one edge
         edges = [i.split(",") for i in edges]
 
@@ -363,7 +366,7 @@ def calc_ei(nodes_data,edges_data,prox_flag='',weight_flag='WEIGHT_EDGES',verbos
     ei_ext = collections.OrderedDict(sorted(ei_ext.items()))
     mean_ei = round(sum(ei_indices.values())/len(ei_indices.values()),3)
     
-    if verbose_flag.upper() == 'VERBOSE':
+    if verbose == True:
         print("***EI indices***\n")
         print("Community\tEI index")
         for i in ei_ord:
@@ -378,11 +381,11 @@ def calc_ei(nodes_data,edges_data,prox_flag='',weight_flag='WEIGHT_EDGES',verbos
         else:
             n_nodes[i[1]] = 1
     
-    if prox_flag.upper() == 'PROX_PAUSE':
+    if pause == True:
         input('Press any key to continue...')
     
-    if prox_flag.upper() == 'PROX' or prox_flag.upper() == 'PROX_PAUSE':
-        ei_out = _get_community_proximity(mu_top,top_edges,ei_int,ei_ext,n_nodes,verbose_flag)
+    if all_output == True:
+        ei_out = _get_shared_ties(mu_top,top_edges,ei_int,ei_ext,n_nodes,verbose)
     else:
         ei_out = eiObject()
         
@@ -401,18 +404,18 @@ def calc_ei(nodes_data,edges_data,prox_flag='',weight_flag='WEIGHT_EDGES',verbos
     ei_out.mean_ei = mean_ei
     return ei_out
 
-# _get_community_proximity: Measures proximity between each community and all others
-# Description: This function reveals how a given community's "external" edges are distributed among the other communities. It is not a standalone function: it can only be run by using the "verbose" option from calc_ei. So don't try to enter the following arguments into the function yourself unless you know what you're doing.
+# _get_shared_ties: Obtains numbers of shared ties between each community and all others
+# Description: This function reveals how a given community's "external" edges are distributed among the other communities. It is not a standalone function: it can only be run by using the "PROX" or "PROX_PAUSE" option from calc_ei. So don't try to enter the following arguments into the function yourself unless you know what you're doing.
 # Arguments:
     # top_community_ids: A list of the top k communities by membership.
     # top_edges: A list of all edges both of whose nodes belong to one of the top k communities.
     # ei_int: A dict in which each key is one of the top k community IDs and each value is the number of edges in which both nodes are members of that community.
     # ei_ext: A dict in which each key is one of the top k community IDs and each value is the number of edges in which one node is a member of that community and the other is a member of any other community.
     # n_nodes: A dict in which each key is one of the top k community IDs and each value is the total number of nodes in that community.
-    # verbose_flag: If set to 'VERBOSE', _get_community_proximity will print some of its output to the shell prompt. If set to anything else, this output will be suppressed. Default value is ''.
+    # verbose: If set to True, _get_shared_ties will print some of its output to the shell prompt. If set to False, this output will be suppressed. The value of this variable is inherited from calc_ei, where its default value is False.
 # Output: The optional output attributes for the "eiObject" class (see above).
     
-def _get_community_proximity(top_community_ids,top_edges,ei_int,ei_ext,n_nodes,verbose_flag):
+def _get_shared_ties(top_community_ids,top_edges,ei_int,ei_ext,n_nodes,verbose):
     adj_out = {} #sent ties point away from the focal community
     adj_in = {} #received ties point toward the focal community
 
@@ -446,7 +449,7 @@ def _get_community_proximity(top_community_ids,top_edges,ei_int,ei_ext,n_nodes,v
         r_s = round(incoming - outgoing,3)
         r_s_dict[i] = r_s
         
-        if verbose_flag.upper() == 'VERBOSE':
+        if verbose == True:
             print("\nCommunity\tSize\tInternal\tReceived\tSent\tReceived - Sent")
             print(str(i)+"\t"+str(n_nodes[i])+"\t"+str(round(ei_int[i]/total,3))+"\t"+str(round(incoming/total,3))+"\t"+str(round(outgoing/total,3))+"\t"+str(round(r_s/total,3))+"\n")
             for j in top_community_ids:
@@ -532,8 +535,8 @@ def get_top_rts(tweets_file,nodes_data,min_rts=5,enc='utf-8',save_prefix=''):
     # nodes_propor: A float variable greater than 0 and less than 1 representing the per-community proportion of top in-degree nodes to compare between A and B. Default is 0.01 (1%). Increasing this number will increase processing time.
     # jacc_threshold: A float variable greater than 0 and less than 1 representing the Jaccard value above which community pairs will be considered valid matches. Default is 0.3. I would caution against using this blindly--try a few different values and see what seems to make sense for your data.
     # dc_threshold: A float variable representing the Jaccard value above which convergences and divergences (as defined below) will be considered valid. I suggest setting this somewhat lower than jacc_threshold. 
-    # weight_flag: If set to 'WEIGHT_JACCARD', the function will weight the Jaccard coefficient by each node's in-degree to match communities between networks A and B. If set to anything else, it will use the unweighted Jaccard coefficient. Default is 'WEIGHT_JACCARD'.
-    # verbose_flag: If set to 'VERBOSE', match_communities will print some of its output to the shell prompt. If set to anything else, this output will be suppressed. Default value is ''.
+    # weight_edges: If set to True, the function will weight the Jaccard coefficient by each node's in-degree to match communities between networks A and B. If set to False, it will use the unweighted Jaccard coefficient. Default is True.
+    # verbose: If set to True, match_communities will print some of its output to the shell prompt. If set to False, this output will be suppressed. Default value is False.
 # Output: An object of the custom class "cMatchObject" containing the following attributes:
     # best_match: An OrderedDict in which the keys are the best community matches for network A in network B (in AxB format where A and B are community IDs) and the values are the corresponding Jaccard values.
     # shared_node: An OrderedDict in which the keys are the best matches for network A in network B (in AxB format where A and B are community IDs) and the values comprise the set of top nodes shared between the two networks.
@@ -550,7 +553,7 @@ class cMatchObject:
         self.divergences = divergences
         self.convergences = convergences
 
-def match_communities(nodes_data_A,nodes_data_B,nodes_filter=0.01,jacc_threshold=0.3,dc_threshold=0.2,weight_flag='WEIGHT_JACCARD',verbose_flag=''):
+def match_communities(nodes_data_A,nodes_data_B,nodes_filter=0.01,jacc_threshold=0.3,dc_threshold=0.2,weight_edges=True,verbose=False):
     nodesA = load_data(nodes_data_A)
     if type(nodes_data_A) is str:
         del nodesA[0]
@@ -572,28 +575,28 @@ def match_communities(nodes_data_A,nodes_data_B,nodes_filter=0.01,jacc_threshold
         for j in filtered_nodes_2:
             intersect = set(filtered_nodes_1[i]).intersection(set(filtered_nodes_2[j])) #get intersection of names for month 1 + 2
             union_both = set(filtered_nodes_1[i] + filtered_nodes_2[j])
-            if weight_flag.upper() == 'WEIGHT_JACCARD':
+            if weight_edges == True:
                 inter_weights = [int(k[2]) for k in nodesA if k[0] in intersect] + [int(k[2]) for k in nodesB if k[0] in intersect] #pull intersection in-degrees from both months and combine into a single list
                 union_weights = [int(k[2]) for k in nodesA if k[0] in union_both] + [int(k[2]) for k in nodesB if k[0] in union_both] #pull union in-degrees from both months and combine into a single list
                 jacc = sum(inter_weights)/sum(union_weights)
-            else: #if weight_flag is set to anything other than 'WEIGHT_JACCARD', set all weights to 1 for each node
+            else: #if weight_edges is set to anything other than 'WEIGHT_JACCARD', set all weights to 1 for each node
                 inter_weights = len(intersect) 
                 union_weights = len(union_both) 
                 jacc = inter_weights/union_weights
             if jacc > 0:
-                if verbose_flag.upper() == 'VERBOSE':
+                if verbose == True:
                     print(i+'x'+j+"\t"+str(round(jacc,4)))
                 nonzero_jacc[i][j] = round(jacc,4) #
             if jacc > hijacc:
                 hijacc = round(jacc,4)
                 hix = i+'x'+j
-        if verbose_flag.upper() == 'VERBOSE':
+        if verbose == True:
             print('high:'+"\t"+hix+"\t"+str(hijacc)+"\n")
         best_match[hix] = hijacc
         hijacc = 0
 
     shared_node = {}    
-    if verbose_flag.upper() == 'VERBOSE':
+    if verbose == True:
         print('Top community matches:')
     for i in best_match:
         if best_match[i] >= jacc_threshold:
@@ -601,7 +604,7 @@ def match_communities(nodes_data_A,nodes_data_B,nodes_filter=0.01,jacc_threshold
             nodes_B = set(filtered_nodes_2[i[i.find('x')+1:]])
             shared_node[i] = nodes_A.intersection(nodes_B)
             sn = ', '.join(shared_node[i])
-            if verbose_flag.upper() == 'VERBOSE':
+            if verbose == True:
                 print(i,"\t",best_match[i],"\t",sn,"\n")
     
     diverge = {}
@@ -611,7 +614,7 @@ def match_communities(nodes_data_A,nodes_data_B,nodes_filter=0.01,jacc_threshold
             highest_key = sorted(nonzero_jacc[i],key=nonzero_jacc[i].get,reverse=True)[0]
             for j in nonzero_jacc[i]:
                 if highest_key != j and jacc_tmp[0] >= dc_threshold and nonzero_jacc[i][j] >= dc_threshold:
-                    if verbose_flag.upper() == 'VERBOSE':
+                    if verbose == True:
                         print('Divergence of month-A community',i,'into month-B communities',highest_key,'and',j)
                     diverge[i] = [highest_key,j]
     
@@ -645,7 +648,7 @@ def match_communities(nodes_data_A,nodes_data_B,nodes_filter=0.01,jacc_threshold
                             conv_msg += 1
                             conv[k].append(j)
                         if conv_msg == 2:
-                            if verbose_flag.upper() == 'VERBOSE':
+                            if verbose == True:
                                 print('Convergence of month-A communities',i,'and',j,'into month-B community',k)
     
     converge = {}
@@ -663,7 +666,7 @@ def match_communities(nodes_data_A,nodes_data_B,nodes_filter=0.01,jacc_threshold
     return match_out
 
 # _filter_nodes: Get the nodes of highest in-degree in a network OR the nodes in a fixed list that appear in a network
-# Desciption: This is a helper function for match_communities and get_bridges that simply loads the top (propor * 100)% of nodes by in-degree OR a preset list of nodes in each community in a partitioned network into a list.
+# Desciption: This is a helper function for match_communities and get_intermediaries that simply loads the top (propor * 100)% of nodes by in-degree OR a preset list of nodes in each community in a partitioned network into a list.
 # Arguments:
     # nodes_data: A community-partition dataset of the type exported by get_top_communities.
     # propor: This variable can either be a float greater than 0 and less than 1 OR a list of node names. If a float, the variable represents the proportion of top in-degree nodes to extract from each community. If a list of nodes, it represents the specific set of nodes to extract from nodes_data when present. Default is 0.01 (1%). Increasing the float will increase processing time.
@@ -693,11 +696,11 @@ def _filter_nodes(nodes_data,nodes_filter=0.01):
     # edges_data: An edgelist of the type exported by t2e.
     # threshold: A float variable greater than 0 and less than 1 representing the minimum proportion of internal ties a given top node needs to receive from an external community to count as a bridge. For example, for node DF where the community most connected to DF is A, setting the threshold to 0.5 means that for DF to count as a bridge, the number of ties DF receives from second most-connected community B must equal at least 50% of the ties it receives from A.
     # nodes_filter: This variable can be either a float greater than 0 and less than 1 or a list of node names. If the former, it represents the proportion of top in-degree nodes to extract from each community. If the latter, it represents the collection of nodes to search for in each community. Default is 0.01 (1%). Increasing the float or list size will increase processing time.
-    # verbose_flag: If set to 'VERBOSE,' the shell will print a message every time a new node is added to the bridge list. Default is ''.
-    # zeropad_flag: Normally, if a node from Community A receives no edges from Community B, get_bridges will omit community B from that node's dict of received links. If zeropad_flag is set to 'ZEROPAD', for each community like B, get_bridges will create a new dict item whose value is 0 (whereas otherwise that dict item would simply not exist). 
-# Output: A list of lists, each of which contains a bridge node's in-degree (at index 0), its name (at index 1), and a dict in which each key is a community ID and each value is the N of links the node received from that community (at index 2). Note: the community ID of the bridge node is not explicitly highlighted in this variable, but it is almost always the ID with the highest N of received links.
+    # verbose: If set to True, the shell will print a message every time a new node is added to the bridge list. Default is False.
+    # zeropad: If zeropad is set to False, if a node from Community A receives no edges from Community B, get_intermediaries will omit community B from that node's dict of received ties. If zeropad is set to True, for each community like B, get_intermediaries will create a new dict item whose value is 0 (whereas otherwise that dict item would simply not exist). 
+# Output: A list of lists, each of which contains a bridge node's in-degree (at index 0), its name (at index 1), and a dict in which each key is a community ID and each value is the N of ties the node received from that community (at index 2). Note: the community ID of the bridge node is not explicitly highlighted in this variable, but it is almost always the ID with the highest N of received ties.
     
-def get_intermediaries(nodes_data,edges_data,bridge_threshold=0.5,nodes_filter=0.01,verbose_flag='',zeropad_flag='ZEROPAD'):
+def get_intermediaries(nodes_data,edges_data,bridge_threshold=0.5,nodes_filter=0.01,verbose=False,zeropad=True):
     nodes = load_data(nodes_data)
     if type(nodes_data) is str:
         del nodes[0]
@@ -710,7 +713,7 @@ def get_intermediaries(nodes_data,edges_data,bridge_threshold=0.5,nodes_filter=0
     
     for cmty in filtered_nodes:
         for name in filtered_nodes[cmty]:
-            if verbose_flag.upper() == 'VERBOSE':
+            if verbose == True:
                 print('Analyzing node "' + name + '".')
             user_edges = []
             
@@ -737,7 +740,7 @@ def get_intermediaries(nodes_data,edges_data,bridge_threshold=0.5,nodes_filter=0
             else:
                 add_bool = False
             if add_bool is True:
-                if verbose_flag.upper() == 'VERBOSE':
+                if verbose == True:
                     print('Node "' + name + '" added to the list.')
                 cmty_rts = collections.OrderedDict(sorted(cmty_rts.items(),key=operator.itemgetter(1),reverse=True))
                 bridge_cands[name] = cmty_rts
@@ -748,7 +751,7 @@ def get_intermediaries(nodes_data,edges_data,bridge_threshold=0.5,nodes_filter=0
         
     bridge_list = sorted(bridge_list,reverse=True)
     
-    if zeropad_flag.upper() == 'ZEROPAD':
+    if zeropad == True:
         for i in bridge_list:
             if len(i[2]) < len(cmty_list):
                 omitted = [j for j in cmty_list if j not in i[2]]
@@ -807,10 +810,10 @@ def get_top_hashtags(tweets_data,nodes_data,min=10):
     # tweets_data: a path to a CSV file (the only delimiter currently allowed is commas) with tweet authors listed in col 1 and corresponding tweet text in col 2. If col 1 contains any text, col 2 must as well, and vice versa.
     # nodes_data: A community-partition dataset of the type exported by get_top_communities.
     # min: The minimum number of times a hyperlink or domain must appear in a given community to be included in that community's list. Increasing this number speeds processing. Default is 10.
-    # domains_flag: If set to 'DOMAINS_ONLY', get_top_links will extract only web domains (e.g. all articles from the New York Times will be counted under the nytimes.com domain). If set to anything else, it will extract full links and count distinct links with the same domain separately. Default is ''.
+    # domains_only: If set to True, get_top_links will extract only web domains (e.g. all articles from the New York Times will be counted under the nytimes.com domain). If set to False, it will extract full links and count distinct links with the same domain separately. Default is False.
 # Output: A dict whose keys are community IDs and whose values are lists, each of which contains one community's top hyperlinks or web domains arranged in descending order of popularity.
 
-def get_top_links(tweets_data,nodes_data,min=10,domains_flag=''):
+def get_top_links(tweets_data,nodes_data,min=10,domains_only=False):
     tweets = load_data(tweets_data)
     if type(tweets_data) is str:
         del tweets[0]
@@ -833,7 +836,7 @@ def get_top_links(tweets_data,nodes_data,min=10,domains_flag=''):
         for hlist in links: #creates final output list
             for hyperlink in hlist:
                 if len(hyperlink)>0:
-                    if domains_flag.upper() == 'DOMAINS_ONLY' and hyperlink.find('/')>-1:
+                    if domains_only == True and hyperlink.find('/')>-1:
                         hyperlink = hyperlink[:hyperlink.find('/')]
                     final.append(hyperlink)
                     
@@ -866,22 +869,23 @@ def _count_cmty_dups(dup_dict,min):
                 
     return ht_top_sorted
 
-# prox_grid: arranges counts or proportions of links shared within and between top communities in a network into a grid
-# Description: prox_grid arranges the output of _get_community_proximity into a list of lists which is printable as a grid.
+# shared_ties_grid: arranges counts or proportions of ties shared within and between top communities in a network into a grid
+# Description: shared_ties_grid arranges the output of _get_shared_ties into a list of lists which is printable as a grid.
 # Arguments:
     # ei_obj: a variable of type eiObject containing all the optional attributes.
-    # rec_sent: a flag determining whether the off-diagonal grid cells will represent received edges ('REC'), sent edges ('SENT'), or sent and received edges summed (TOTAL). Default is 'REC'.
-    # n_prop: If set to 'PROPOR', each cell value will represent a proportion of the total edges in the community indicated by index 0 of the given row. If set to anything else, prox_grid will output raw edge counts. Default is 'PROPOR'.
-# Output: prox_grid outputs a list of lists in the following format: 
+    # rec_sent: a flag determining whether the off-diagonal grid cells will represent received edges ('REC'), sent edges ('SENT'), or sent and received edges summed ('ALL'). Default is 'ALL'.
+    # calc_propor: If set to True, each cell value will represent a proportion of the total edges in the community indicated by index 0 of the given row. If set to False, shared_ties_grid will output edge counts. Default is False.
+    # invert: If set to True, the function will output the reciprocals of all the off-diagonal cell values and zeroes for all diagonal values. Cells whose reciprocals would result in division by zero will be assigned a value of 1. The contents of the top row and leftmost column will remain unaltered. If set to True, non-reciprocal values (i.e., shared-tie counts or proportions) will be output. Default is False.
+# Output: shared_ties_grid outputs a list of lists in the following format: 
     # Indices 1 through k of the first row contain all k communities represented in the eiObject. Index 0 is left blank.
     # The 0 indices of all remaining rows also contain all k communities represented in the eiObject. Thus the grid always has a size of k+1 x k+1.
-    # Each off-diagonal grid "cell" represents either the proportion (if n_prop is set to 'PROPOR') or count (if not) of edges received or sent (or both) by the community indicated by index 0 of the kth row from or to the community indicated on the kth index of the first row (the "column"). Diagonal grid cells represent the proportions or counts of internal edges of the community indicated by index 0 of the given row.
-    # Grids created by prox_grid can easily be viewed in the shell using the following code (where ei is a variable of type eiObject created with the 'PROX' flag):
-    # testgrid = prox_grid(ei)
+    # Each off-diagonal grid "cell" represents either the count, inverted count, or proportion (depending on how the flags are set) of edges received or sent (or both) by the community indicated by index 0 of the kth row from or to the community indicated on the kth index of the first row (the "column"). Diagonal grid cells represent the proportions or counts of internal edges of the community indicated by index 0 of the given row.
+    # Grids created by shared_ties_grid can easily be viewed in the shell using the following code (where ei is a variable of type eiObject created with the 'PROX' flag):
+    # testgrid = shared_ties_grid(ei)
     # for i in testgrid:
     #     print(i)
 
-def prox_grid(ei_obj,rec_sent='TOTAL',n_prop='PROPOR'):
+def shared_ties_grid(ei_obj,rec_sent='ALL',calc_propor=False,invert=False):
     if rec_sent.upper() == 'REC':
         raw = ei_obj.adj_in
     elif rec_sent.upper() == 'SENT':
@@ -925,11 +929,28 @@ def prox_grid(ei_obj,rec_sent='TOTAL',n_prop='PROPOR'):
     outlist = []
     
     for n,i in enumerate(raw3):
-        if n_prop.upper() == 'PROPOR': #if PROPOR flag is set, divide each value by total N of ties
+        if calc_propor == True: #if PROPOR flag is set, divide each value by total N of ties
             outlist.append([round(j/ei_obj.total_ties[str(i)],3) for j in list(raw3[i].values())])
         else:
             outlist.append(list(raw3[i].values()))
         outlist[n].insert(0,i)
     
     outlist.insert(0,['']+clist)
-    return outlist
+    
+    if invert == True:
+        recip = []
+        for n,i in enumerate(outlist):
+            recip.append([])
+            for x,j in enumerate(outlist[n]):
+                if n != x and n != 0 and x != 0:
+                    try:
+                        recip[n].append(format(1/outlist[n][x],'f'))
+                    except ZeroDivisionError:
+                        recip[n].append(1)
+                elif n == x and n != 0 and x != 0:
+                    recip[n].append(0)
+                else:    
+                    recip[n].append(outlist[n][x])
+        return recip
+    else:    
+        return outlist
