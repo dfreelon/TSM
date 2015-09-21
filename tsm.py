@@ -5,7 +5,7 @@
 # (c) 2014, 2015 by Deen Freelon <dfreelon@gmail.com>
 # Distributed under the BSD 3-clause license. See LICENSE.txt or http://opensource.org/licenses/BSD-3-Clause for details.
 
-# This Python module contains a set of functions that create and manipulate Twitter and Twitter-like network communities (subgraphs) in various ways. The only Twitter-specific functions are t2e and get_top_rts; the rest can be used with any directed edgelist. This module is intended for use with directed, long-tailed, and extremely sparse networks like those commonly found on the web. It functions only with Python 3.x and is not backwards-compatible (although one could probably branch off a 2.x port with minimal effort).
+# This Python module contains a set of functions that create and manipulate Twitter and Twitter-like (directed, long-tailed, extremely sparse) network communities/subgraphs in various ways. The only Twitter-specific functions are t2e, get_top_rts, and get_top_hashtags; the rest can be used with any directed edgelist. It functions only with Python 3.x and is not backwards-compatible (although one could probably branch off a 2.x port with minimal effort).
 
 # Warning: TSM performs no custom error-handling, so make sure your inputs are formatted properly! If you have questions, please let me know via email.
 
@@ -37,7 +37,7 @@
 
 # REQUIRED MODULES
 
-#Below are all this module's dependencies. Everything except NetworkX and community comes standard with Python. You can get NetworkX here: http://networkx.github.io/ or through pip. You'll also need Thomas Aynaud's implementation of the Louvain method for community detection (python-louvain), which is available here: https://bitbucket.org/taynaud/python-louvain or through pip. (Note that only the Py3-compliant version 0.4 of this module will work with TSM.) 
+#Below are all this module's dependencies. Everything except NetworkX and community comes standard with Python. You can get NetworkX here: http://networkx.github.io/ or through pip. You'll also need Thomas Aynaud's implementation of the Louvain method for community detection (python-louvain), which is available here: https://bitbucket.org/taynaud/python-louvain or through pip. (Note that only the Py3-compliant version 0.4 of this module will work with TSM.)
 
 import collections
 import community
@@ -521,7 +521,6 @@ def get_top_rts(tweets_file,nodes_data,min_rts=5,enc='utf-8',save_prefix=''):
         top_rts_out.insert(0,['"rted_user"','"rt_text"','"community"','"n_rts"'])
         out_fn = save_prefix + '_top_RTs.csv'
         save_csv(out_fn,top_rts_out,'','w',enc)
-        print('RT file "'+out_fn+'" exported.')
         return top_rts_out[1:]
     
     else:
@@ -765,26 +764,23 @@ def get_intermediaries(nodes_data,edges_data,bridge_threshold=0.5,nodes_filter=0
 # Arguments:
     # tweets_data: a path to a CSV file (the only delimiter currently allowed is commas) with tweet authors listed in col 1 and corresponding tweet text in col 2. If col 1 contains any text, col 2 must as well, and vice versa.
     # nodes_data: A community-partition dataset of the type exported by get_top_communities.
-    # min: The minimum number of times a hashtag must appear in a given community to be included in that community's list. Increasing this number speeds processing. Default is 10.
+    # min_items: The minimum number of times a hashtag must appear in a given community to be included in that community's list. Increasing this number speeds processing. Default is 10.
 # Output: A dict whose keys are community IDs and whose values are lists, each of which contains one community's top hashtags arranged in descending order of popularity.
     
-def get_top_hashtags(tweets_data,nodes_data,min=10):
-    tweets = load_data(tweets_data)
-    if type(tweets_data) is str:
-        del tweets[0]
-        
-    nodes = load_data(nodes_data)
+def get_top_hashtags(tweets_data,nodes_data,min_items=10):
+    tweets = [i for i in load_data(tweets_data) if i[0].strip() != '']  
+    nodes = [i for i in load_data(nodes_data) if i[0].strip() != '']
     if type(nodes_data) is str:
         del nodes[0]
 
-    clust_uniq = list(set([i[1] for i in nodes]))
+    clust_uniq = set([i[1] for i in nodes])
     node_dict = {i[0].lower():i[1] for i in nodes}
     tweets = [[i[0].lower(),i[1].lower()] for i in tweets if i[0].lower() in node_dict]
     ht_dict = {}
 
-    for id in clust_uniq:
-        tweets = [' ' + re.sub(r'[\\\"\'\.\,\-\:“”()!&\[\]]','',t[1]).lower().replace(u'\u200F','') + ' ' for t in tweets if t[1].find('#') > -1 and node_dict[t[0]] == id] #fills in the list tweets with hashtags, lowercased, space-padded, cleaned and only if a hashmark exists in the tweet
-        tweets_split = [t.split('#') for t in tweets] #splits each tweet along #s
+    for cid in clust_uniq:
+        splitprep = [' ' + re.sub(r'[\\\"\'\.\,\-\:“”()!&\[\]]','',t[1]).lower().replace(u'\u200F','') + ' ' for t in tweets if t[1].find('#') > -1 and node_dict[t[0]] == cid] #fills in the list tweets with hashtags, lowercased, space-padded, cleaned and only if a hashmark exists in the tweet
+        tweets_split = [t.split('#') for t in splitprep] #splits each tweet along #s
         f_hashtags = [[t[:re.search('[\s\r\n\t]',t).start()].strip() for t in chunk if re.search('[\s\r\n\t]',t) is not None] for chunk in tweets_split] #strips out everything after the # sign, leaving (hopefully) a list of lists of hashtags
         r_hashtags = [[t[t.rfind(' ')+1:].strip() for t in chunk] for chunk in tweets_split]
 
@@ -798,11 +794,11 @@ def get_top_hashtags(tweets_data,nodes_data,min=10):
                 if len(hashtag)>0:
                     final.append(hashtag)
                     
-        ht_dict[id] = final
+        ht_dict[cid] = final
 
     ht_top = {}
 
-    return _count_cmty_dups(ht_dict,min)
+    return _count_cmty_dups(ht_dict,min_items)
     
 # get_top_links: Collects the most-used hyperlinks or web domains in each community in descending order of popularity
 # Description: This function collects the most-used hyperlinks or web domains in a set of tweets that's been partitioned into communities and organizes them first by community and then in descending order of popularity.
@@ -813,23 +809,20 @@ def get_top_hashtags(tweets_data,nodes_data,min=10):
     # domains_only: If set to True, get_top_links will extract only web domains (e.g. all articles from the New York Times will be counted under the nytimes.com domain). If set to False, it will extract full links and count distinct links with the same domain separately. Default is False.
 # Output: A dict whose keys are community IDs and whose values are lists, each of which contains one community's top hyperlinks or web domains arranged in descending order of popularity.
 
-def get_top_links(tweets_data,nodes_data,min=10,domains_only=False):
-    tweets = load_data(tweets_data)
-    if type(tweets_data) is str:
-        del tweets[0]
-        
-    nodes = load_data(nodes_data)
+def get_top_links(tweets_data,nodes_data,min_items=10,domains_only=False):
+    tweets = [i for i in load_data(tweets_data) if i[0].strip() != '']  
+    nodes = [i for i in load_data(nodes_data) if i[0].strip() != '']
     if type(nodes_data) is str:
         del nodes[0]
 
-    clust_uniq = list(set([i[1] for i in nodes]))
+    clust_uniq = set([i[1] for i in nodes])
     node_dict = {i[0].lower():i[1] for i in nodes}
     tweets = [[i[0].lower(),i[1].lower().replace('https','http')] for i in tweets if i[0].lower() in node_dict]
     links_dict = {}
 
-    for id in clust_uniq:
-        tweets = [' ' + re.sub(r'[\\"\'“”\[\]><]','',t[1]).lower().replace(u'\u200F','') + ' ' for t in tweets if t[1].find('http://') > -1 and node_dict[t[0]] == id] #fills in the list tweets with hyperlinks, lowercased, space-padded, cleaned and only if 'http://' exists in the tweet
-        tweets_split = [t.split('http://') for t in tweets] #splits each tweet along 'http://'s
+    for cid in clust_uniq:
+        splitprep = [' ' + re.sub(r'[\\"\'“”\[\]><]','',t[1]).lower().replace(u'\u200F','') + ' ' for t in tweets if t[1].find('http://') > -1 and node_dict[t[0]] == cid] #fills in the list tweets with hyperlinks, lowercased, space-padded, cleaned and only if 'http://' exists in the tweet
+        tweets_split = [t.split('http://') for t in splitprep] #splits each tweet along 'http://'s
         links = [[t[:re.search('[\s\r\n\t]',t).start()].strip() for t in chunk if re.search('[\s\r\n\t]',t) is not None] for chunk in tweets_split] #strips out everything after the 'http://', leaving (hopefully) a list of lists of hyperlinks
 
         final = []
@@ -840,14 +833,14 @@ def get_top_links(tweets_data,nodes_data,min=10,domains_only=False):
                         hyperlink = hyperlink[:hyperlink.find('/')]
                     final.append(hyperlink)
                     
-        links_dict[id] = final
+        links_dict[cid] = final
 
-    return _count_cmty_dups(links_dict,min)
+    return _count_cmty_dups(links_dict,min_items)
 
 # _count_cmty_dups: Helper function for get_top_hashtags and get_top_links
 # Description: This function helps coax the data for get_top_hashtags and get_top_links into the proper format. You shouldn't need to alter it.
     
-def _count_cmty_dups(dup_dict,min):
+def _count_cmty_dups(dup_dict,min_items):
     ht_top = {}
 
     for i in dup_dict:
@@ -864,7 +857,7 @@ def _count_cmty_dups(dup_dict,min):
     for i in ht_top:
         ht_top_sorted[i] = []
         for j in sorted(ht_top[i],key=ht_top[i].get,reverse=True):
-            if ht_top[i][j] >= min:
+            if ht_top[i][j] >= min_items:
                 ht_top_sorted[i].append([j,ht_top[i][j]])
                 
     return ht_top_sorted
