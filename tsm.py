@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
 # TSM (Twitter Subgraph Manipulator) for Python 3
-# release 5 (09/20/15)
-# (c) 2014, 2015 by Deen Freelon <dfreelon@gmail.com>
+# release 6 (03/04/16)
+# (c) 2014, 2015, 2016 by Deen Freelon <dfreelon@gmail.com>
 # Distributed under the BSD 3-clause license. See LICENSE.txt or http://opensource.org/licenses/BSD-3-Clause for details.
 
 # This Python module contains a set of functions that create and manipulate Twitter and Twitter-like (directed, long-tailed, extremely sparse) network communities/subgraphs in various ways. The only Twitter-specific functions are t2e, get_top_rts, and get_top_hashtags; the rest can be used with any directed edgelist. It functions only with Python 3.x and is not backwards-compatible (although one could probably branch off a 2.x port with minimal effort).
@@ -37,7 +37,7 @@
 
 # REQUIRED MODULES
 
-#Below are all this module's dependencies. Everything except NetworkX and community comes standard with Python. You can get NetworkX here: http://networkx.github.io/ or through pip. You'll also need Thomas Aynaud's implementation of the Louvain method for community detection (python-louvain), which is available here: https://bitbucket.org/taynaud/python-louvain or through pip. (Note that only the Py3-compliant version 0.4 of this module will work with TSM.)
+#Below are all this module's dependencies. Everything except NetworkX and community comes standard with Python. You can get NetworkX here: http://networkx.github.io/ or through pip. You'll also need Thomas Aynaud's implementation of the Louvain method for community detection (python-louvain, which is where the community module lives), which is available here: https://bitbucket.org/taynaud/python-louvain or through pip. (Note that only the Py3-compliant version 0.4 of python-louvain will work with TSM.)
 
 import collections
 import community
@@ -84,7 +84,7 @@ def load_data(data,enc='utf-8'):
 def save_csv(filename,data,use_quotes=False,file_mode='w',enc='utf-8'): #this assumes a list of lists wherein the second-level list items contain no commas
     with open(filename,file_mode,encoding = enc) as out:
         for line in data:
-            if type(line) is not list:
+            if type(line) is not list and type(line) is not tuple:
                 line = [line] #forces all items in 'data' to be lists
             if use_quotes == True:
                 row = '"' + '","'.join([str(i).replace('"',"'") for i in line]) + '"' + "\n"
@@ -149,22 +149,15 @@ def t2e(tweet_data,extmode='ALL',enc='utf-8',save_prefix=''):
 
     else: #the code below is necessary to pull multiple mentioned users from single tweets
         tweets = [t.split('@') for t in tweets] #splits each tweet along @s
-        ment_users = [[t[:re.search('[^A-Za-z0-9_]',t).start()].lower().strip() for t in chunk if re.search('[^A-Za-z0-9_]',t) is not None] for chunk in tweets] #strips out everything after the @ sign and trailing colons, leaving (hopefully) a list of lists of node names
-        for line in ment_users:
-            if len(line) > 1 and line[0] == '': #removes blank entries from lines mentioning at least one name
-                del line[0]
-
-        for i,mlist in enumerate(ment_users): 
-            for name in mlist: #captures multiple names per tweets where applicable
-                if len(name) > 0:
-                    final.append([authors[i],name])
-                    
+        for n,chunk in enumerate(tweets):
+            ment_users = [t[:re.search('[^A-Za-z0-9_]',t).start()].lower().strip() for t in chunk if re.search('[^A-Za-z0-9_]',t) is not None]
+            final.extend([[authors[n],name] for name in ment_users if len(name.strip()) > 0])
+          
     print('Edge list created.')
     
     if len(save_prefix) > 0:
         outfile = save_prefix + '_edgelist.csv'
         save_csv(outfile,final)
-        print('Your export file is "' + outfile + '".')
     
     return final
 
@@ -313,7 +306,7 @@ def calc_ei(nodes_data,edges_data,all_output=True,pause=False,weight_edges=True,
         print("Calculating EI indices using *weighted* edges.\n")
     
     nodes = load_data(nodes_data)
-    if type(nodes_data) is str or nodes[0][0] == 'name':
+    if nodes[0][0] == 'name':
         del nodes[0] #remove headers from CSV
     
     edges = load_data(edges_data)
@@ -428,7 +421,7 @@ def _get_shared_ties(top_community_ids,top_edges,ei_int,ei_ext,n_nodes,verbose):
                     adj_out[i][j[3]] += 1
                 else:
                     adj_out[i][j[3]] = 1
-            if j[3] == i and j[2] != i:
+            if j[2] != i and j[3] == i:
                 if j[2] in adj_in[i]:
                     adj_in[i][j[2]] += 1
                 else:
@@ -475,56 +468,44 @@ def _get_shared_ties(top_community_ids,top_edges,ei_int,ei_ext,n_nodes,verbose):
     # tweets_file: A CSV file containing tweets formatted for t2e as specified above. 
     # nodes_data: A community-partition dataset of the type exported by get_top_communities. Can be a variable (a list of lists) or a path to a CSV file. 
     # min_rts: An integer indicating the minimum number of retweets to be included in the output. Default is 5. Increasing this number will reduce your filesize and processing time; decreasing it will do the opposite.
+    # lc: A boolean value determining whether the retweets will be converted to lowercase before counting duplicates. Lowercasing retweets may increase retweet counts but it will break case-sensitive hyperlinks such as those generated by Twitter. Default is False.
     # enc: the character encoding of the file you're trying to open and/or save. See https://docs.python.org/3.4/library/codecs.html#standard-encodings
     # save_prefix: Add a string here to save your file to CSV. Your saved file will be named as follows: 'string'_top_RTs.csv
 # Output: A list of lists, each of which contains the name of the retweeted user, the full text of the retweet, the user's community ID, and the number of times the tweet was retweeted. This list is ranked in descending order of retweet count.
 
-def get_top_rts(tweets_file,nodes_data,min_rts=5,enc='utf-8',save_prefix=''):
+def get_top_rts(tweets_file,nodes_data,min_rts=5,lc=False,enc='utf-8',save_prefix=''):
     rts = []
+    node_dict = {i[0]:i[1] for i in load_data(nodes_data)}
     
-    nodes = load_data(nodes_data)
-    if nodes_data[0][0] == 'name':
-        del nodes[0]
-    
-    with open(tweets_file,'r',encoding = enc,errors='replace') as f:
+    with open(tweets_file,'r',encoding=enc,errors='replace') as f:
         reader = csv.reader(f)
         for row in reader:
             if row[1].startswith('RT @') and row[1].find(':')>-1:
-                rts.append(row[1].lower())
-
-    node_dict = {i[0]:i[1] for i in nodes}
-
-    dups = {}
-    for i in rts:
-        if i in dups:
-            dups[i] +=1
-        else:
-            dups[i] = 1
-
-    rted_user_list = []
-    for i in dups:
-        rted_user_list.append([i[i.find('@')+1:i.find(':')],i])
-
-    top_rts_out = []
-    for i in rted_user_list:
-        if i[0] in node_dict and dups[i[1]] >= min_rts:
-            top_rts_out.append([dups[i[1]],i[0],i[1],str(node_dict[i[0]]),str(dups[i[1]])])
-
-    top_rts_out.sort(reverse=True)
-    for i in top_rts_out:
-        del i[0]
+                if lc == False:
+                    rts.append(row[1])
+                else:
+                    rts.append(row[1].lower())
     
+    rts_ct = collections.Counter(rts).most_common()
+    rts_ct_out = []
+    
+    for n,i in enumerate(rts_ct):
+        rted = i[0][i[0].find('@')+1:i[0].find(':')].lower()
+        try:
+            rts_ct_out.append([rted,rts_ct[n][0],node_dict[rted],rts_ct[n][1]])
+        except KeyError:
+            pass
+            
+    rts_ct_out = [i for i in rts_ct_out if i[3] >= min_rts]
+
     if len(save_prefix) > 0:
-        for i,row in enumerate(top_rts_out):
-            for j,_ in enumerate(row):
-                top_rts_out[i][j] = '"' + top_rts_out[i][j] + '"'
-        top_rts_out.insert(0,['"rted_user"','"rt_text"','"community"','"n_rts"'])
+        rts_ct_out.insert(0,['rted_user','rt_text','community','n_rts'])
         out_fn = save_prefix + '_top_RTs.csv'
-        save_csv(out_fn,top_rts_out,'','w',enc)
-        return top_rts_out[1:]
+        save_csv(out_fn,rts_ct_out,True)
+        return rts_ct_out[1:]
     
     else:
-        return top_rts_out
+        return rts_ct_out
     
 # match_communities: Find the best community matches between two networks using the weighted Jaccard coefficient
 # Description: This function takes two partitioned networks, A and B, and finds the best match for each community in A among the communities in B. Matches are determined by measuring membership overlap with either the weighted or the unweighted Jaccard coefficient, depending on how the weight_nodes parameter is set. To reduce processing time, only the top (propor * 100)% of nodes by in-degree in each community are compared. The weighted Jaccard comparisons are weighted by in-degree, meaning that higher in-degree nodes count more toward community similarity. This is based on the assumption that nodes of higher in-degree play a proportionately larger role in terms of maintaining community coherence.
@@ -554,11 +535,11 @@ class cMatchObject:
 
 def match_communities(nodes_data_A,nodes_data_B,nodes_filter=0.01,jacc_threshold=0.3,dc_threshold=0.2,weight_edges=True,verbose=False):
     nodesA = load_data(nodes_data_A)
-    if type(nodes_data_A) is str:
+    if nodesA[0][0] == 'name':
         del nodesA[0]
 
     nodesB = load_data(nodes_data_B)
-    if type(nodes_data_B) is str:
+    if nodesB[0][0] == 'name':
         del nodesB[0]
 
     filtered_nodes_1 = _filter_nodes(nodesA,nodes_filter)
@@ -573,7 +554,7 @@ def match_communities(nodes_data_A,nodes_data_B,nodes_filter=0.01,jacc_threshold
         hix = i+'x'
         for j in filtered_nodes_2:
             intersect = set(filtered_nodes_1[i]).intersection(set(filtered_nodes_2[j])) #get intersection of names for month 1 + 2
-            union_both = set(filtered_nodes_1[i] + filtered_nodes_2[j])
+            union_both = set(filtered_nodes_1[i]).union(set(filtered_nodes_2[j]))
             if weight_edges == True:
                 inter_weights = [int(k[2]) for k in nodesA if k[0] in intersect] + [int(k[2]) for k in nodesB if k[0] in intersect] #pull intersection in-degrees from both months and combine into a single list
                 union_weights = [int(k[2]) for k in nodesA if k[0] in union_both] + [int(k[2]) for k in nodesB if k[0] in union_both] #pull union in-degrees from both months and combine into a single list
@@ -697,11 +678,11 @@ def _filter_nodes(nodes_data,nodes_filter=0.01):
     # nodes_filter: This variable can be either a float greater than 0 and less than 1 or a list of node names. If the former, it represents the proportion of top in-degree nodes to extract from each community. If the latter, it represents the collection of nodes to search for in each community. Default is 0.01 (1%). Increasing the float or list size will increase processing time.
     # verbose: If set to True, the shell will print a message every time a new node is added to the bridge list. Default is False.
     # zeropad: If zeropad is set to False, if a node from Community A receives no edges from Community B, get_intermediaries will omit community B from that node's dict of received ties. If zeropad is set to True, for each community like B, get_intermediaries will create a new dict item whose value is 0 (whereas otherwise that dict item would simply not exist). 
-# Output: A list of lists, each of which contains a bridge node's in-degree (at index 0), its name (at index 1), and a dict in which each key is a community ID and each value is the N of ties the node received from that community (at index 2). Note: the community ID of the bridge node is not explicitly highlighted in this variable, but it is almost always the ID with the highest N of received ties.
+# Output: A list of lists, each of which contains a bridge node's in-degree (at index 0), its name (at index 1), and a dict in which each key is a community ID and each value is the N of ties the node received from that community (at index 2). Note: the community ID of the bridge node is not explicitly indicated in this dict, but it is almost always the ID with the highest N of received ties.
     
 def get_intermediaries(nodes_data,edges_data,bridge_threshold=0.5,nodes_filter=0.01,verbose=False,zeropad=True):
     nodes = load_data(nodes_data)
-    if type(nodes_data) is str:
+    if nodes_data[0][0] == 'name':
         del nodes[0]
     edges = load_data(edges_data)
     filtered_nodes = _filter_nodes(nodes,nodes_filter)
@@ -764,13 +745,14 @@ def get_intermediaries(nodes_data,edges_data,bridge_threshold=0.5,nodes_filter=0
 # Arguments:
     # tweets_data: a path to a CSV file (the only delimiter currently allowed is commas) with tweet authors listed in col 1 and corresponding tweet text in col 2. If col 1 contains any text, col 2 must as well, and vice versa.
     # nodes_data: A community-partition dataset of the type exported by get_top_communities.
-    # min_items: The minimum number of times a hashtag must appear in a given community to be included in that community's list. Increasing this number speeds processing. Default is 10.
-# Output: A dict whose keys are community IDs and whose values are lists, each of which contains one community's top hashtags arranged in descending order of popularity.
+    # min_ct: The minimum number of times a hashtag must appear in a given community to be included in that community's list. Increasing this number speeds processing. Default is 10.
+    # rtl_ht: If set to True, the function will search for hashtags written with the hashmark on the right, such as those in right-to-left languages like Arabic and Hebrew. If set to False, it will not include such hashtags. Default is False.
+# Output: A dict whose keys are community IDs and whose values are lists, the entries of which are tuples in which the first value is a hashtag and the second is the number of times it appears within the given community. Each list is arranged in descending order of hashtag prevalence.
     
-def get_top_hashtags(tweets_data,nodes_data,min_items=10):
+def get_top_hashtags(tweets_data,nodes_data,min_ct=10,rtl_ht=False):
     tweets = [i for i in load_data(tweets_data) if i[0].strip() != '']  
     nodes = [i for i in load_data(nodes_data) if i[0].strip() != '']
-    if type(nodes_data) is str:
+    if nodes_data[0][0] == 'name':
         del nodes[0]
 
     clust_uniq = set([i[1] for i in nodes])
@@ -779,68 +761,70 @@ def get_top_hashtags(tweets_data,nodes_data,min_items=10):
     ht_dict = {}
 
     for cid in clust_uniq:
-        splitprep = [' ' + re.sub(r'[\\\"\'\.\,\-\:“”()!&\[\]]','',t[1]).lower().replace(u'\u200F','') + ' ' for t in tweets if t[1].find('#') > -1 and node_dict[t[0]] == cid] #fills in the list tweets with hashtags, lowercased, space-padded, cleaned and only if a hashmark exists in the tweet
+        splitprep = [' ' + re.sub(r'[\\\"\'\.\,\-\:“”()!&\[\]]',' ',t[1]).lower().replace(u'\u200F','') + ' ' for t in tweets if '#' in t[1] and node_dict[t[0]] == cid] #fills in the list tweets with hashtags, lowercased, space-padded, cleaned and only if a hashmark exists in the tweet
         tweets_split = [t.split('#') for t in splitprep] #splits each tweet along #s
-        f_hashtags = [[t[:re.search('[\s\r\n\t]',t).start()].strip() for t in chunk if re.search('[\s\r\n\t]',t) is not None] for chunk in tweets_split] #strips out everything after the # sign, leaving (hopefully) a list of lists of hashtags
-        r_hashtags = [[t[t.rfind(' ')+1:].strip() for t in chunk] for chunk in tweets_split]
-
         final = []
-        for hlist in f_hashtags: #creates final output list
-            for hashtag in hlist:
-                if len(hashtag)>0:
-                    final.append(hashtag)
-        for hlist in r_hashtags: #creates final output list
-            for hashtag in hlist:
-                if len(hashtag)>0:
-                    final.append(hashtag)
-                    
+        for chunk in tweets_split:
+            f_hashtags = [t[:re.search('[\s\r\n\t]',t).start()].strip() for t in chunk if re.search('[\s\r\n\t]',t) is not None]  #strips out everything after the # sign, leaving (hopefully) a list of lists of hashtags
+            final.extend(set([h for h in f_hashtags if len(h.strip()) > 0])) #use set so as not to count multiple iterations of the same hashtag used in a single tweet
+        if rtl_ht == True:
+            for chunk in tweets_split:
+                r_hashtags = [t[t.rfind(' ')+1:].strip() for t in chunk]
+                final.extend(set([h for h in r_hashtags if len(h) > 0]))
+  
         ht_dict[cid] = final
 
-    ht_top = {}
-
-    return _count_cmty_dups(ht_dict,min_items)
+    return _count_cmty_dups(ht_dict,min_ct)
     
 # get_top_links: Collects the most-used hyperlinks or web domains in each community in descending order of popularity
 # Description: This function collects the most-used hyperlinks or web domains in a set of tweets that's been partitioned into communities and organizes them first by community and then in descending order of popularity.
 # Arguments:
     # tweets_data: a path to a CSV file (the only delimiter currently allowed is commas) with tweet authors listed in col 1 and corresponding tweet text in col 2. If col 1 contains any text, col 2 must as well, and vice versa.
     # nodes_data: A community-partition dataset of the type exported by get_top_communities.
-    # min: The minimum number of times a hyperlink or domain must appear in a given community to be included in that community's list. Increasing this number speeds processing. Default is 10.
+    # min_ct: The minimum number of times a hyperlink or domain must appear in a given community to be included in that community's list. Increasing this number speeds processing. Default is 10.
     # domains_only: If set to True, get_top_links will extract only web domains (e.g. all articles from the New York Times will be counted under the nytimes.com domain). If set to False, it will extract full links and count distinct links with the same domain separately. Default is False.
+    # remove_3ld: If set to True, the function will remove all third-level domains from the links (e.g. "www."). If set to False, it will leave all third-level domains intact. Default is False.
+    # remove_tco: If set to True, the function will remove any t.co links from the results. If set to False, it will leave in any t.co links. Default is True.
 # Output: A dict whose keys are community IDs and whose values are lists, each of which contains one community's top hyperlinks or web domains arranged in descending order of popularity.
 
-def get_top_links(tweets_data,nodes_data,min_items=10,domains_only=False):
+def get_top_links(tweets_data,nodes_data,min_ct=10,domains_only=False,remove_3ld=False,remove_tco=True):
     tweets = [i for i in load_data(tweets_data) if i[0].strip() != '']  
     nodes = [i for i in load_data(nodes_data) if i[0].strip() != '']
-    if type(nodes_data) is str:
+    if nodes_data[0][0] == 'name':
         del nodes[0]
 
     clust_uniq = set([i[1] for i in nodes])
     node_dict = {i[0].lower():i[1] for i in nodes}
-    tweets = [[i[0].lower(),i[1].lower().replace('https','http')] for i in tweets if i[0].lower() in node_dict]
+    tweets = [[i[0].lower(),i[1].replace('https','http')] for i in tweets if i[0].lower() in node_dict]
     links_dict = {}
+    if remove_tco == True:
+        tweets = [[i[0],i[1].replace('http://t.co/','')] for i in tweets]
 
     for cid in clust_uniq:
-        splitprep = [' ' + re.sub(r'[\\"\'“”\[\]><]','',t[1]).lower().replace(u'\u200F','') + ' ' for t in tweets if t[1].find('http://') > -1 and node_dict[t[0]] == cid] #fills in the list tweets with hyperlinks, lowercased, space-padded, cleaned and only if 'http://' exists in the tweet
+        splitprep = [' ' + re.sub(r'[\\"\'“”\[\]><]','',t[1]).replace(u'\u200F','') + ' ' for t in tweets if 'http://' in t[1] and node_dict[t[0]] == cid] #fills in the list tweets with hyperlinks, lowercased, space-padded, cleaned and only if 'http://' exists in the tweet
         tweets_split = [t.split('http://') for t in splitprep] #splits each tweet along 'http://'s
-        links = [[t[:re.search('[\s\r\n\t]',t).start()].strip() for t in chunk if re.search('[\s\r\n\t]',t) is not None] for chunk in tweets_split] #strips out everything after the 'http://', leaving (hopefully) a list of lists of hyperlinks
-
         final = []
-        for hlist in links: #creates final output list
-            for hyperlink in hlist:
-                if len(hyperlink)>0:
-                    if domains_only == True and hyperlink.find('/')>-1:
-                        hyperlink = hyperlink[:hyperlink.find('/')]
-                    final.append(hyperlink)
+        for chunk in tweets_split:
+            links = [t[:re.search('[\s\r\n\t]',t).start()].strip() for t in chunk if re.search('[\s\r\n\t]',t) is not None] #strips out everything after the 'http://', leaving (hopefully) a list of lists of hyperlinks
+            if domains_only == True:
+                final.extend([hyperlink[:hyperlink.find('/')] for hyperlink in links if len(hyperlink.strip()) > 0 and '/' in hyperlink])
+                final.extend([hyperlink for hyperlink in links if len(hyperlink.strip()) > 0 and '/' not in hyperlink])
+            else:
+                final.extend([hyperlink for hyperlink in links if len(hyperlink.strip()) > 0])
+
+        if remove_3ld == True:
+            for key,_ in enumerate(final):
+                if final[key].count('.') >= 2:
+                    final[key] = final[key][final[key].find('.')+1:]
                     
         links_dict[cid] = final
 
-    return _count_cmty_dups(links_dict,min_items)
+    return _count_cmty_dups(links_dict,min_ct)
 
 # _count_cmty_dups: Helper function for get_top_hashtags and get_top_links
 # Description: This function helps coax the data for get_top_hashtags and get_top_links into the proper format. You shouldn't need to alter it.
     
-def _count_cmty_dups(dup_dict,min_items):
+def _count_cmty_dups(dup_dict,min_ct):
     ht_top = {}
 
     for i in dup_dict:
@@ -857,9 +841,12 @@ def _count_cmty_dups(dup_dict,min_items):
     for i in ht_top:
         ht_top_sorted[i] = []
         for j in sorted(ht_top[i],key=ht_top[i].get,reverse=True):
-            if ht_top[i][j] >= min_items:
+            if ht_top[i][j] >= min_ct:
                 ht_top_sorted[i].append([j,ht_top[i][j]])
-                
+    try:
+        del ht_top_sorted['community']
+    except KeyError:
+        pass            
     return ht_top_sorted
 
 # shared_ties_grid: arranges counts or proportions of ties shared within and between top communities in a network into a grid
@@ -929,6 +916,7 @@ def shared_ties_grid(ei_obj,rec_sent='ALL',calc_propor=False,invert=False):
         outlist[n].insert(0,i)
     
     outlist.insert(0,['']+clist)
+    print('Grid created.')
     
     if invert == True:
         recip = []
