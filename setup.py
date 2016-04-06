@@ -10,4 +10,5 @@ setup(name='TSM',
       author_email='dfreelon@gmail.com',
       license='BSD',
       install_requires=dependencies,
+      py_modules=['tsm'],
       zip_safe=False)
