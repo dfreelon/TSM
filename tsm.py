@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 # TSM (Twitter Subgraph Manipulator) for Python 3
-# release 6 (03/04/16)
+# release 7 (06/07/16)
 # (c) 2014, 2015, 2016 by Deen Freelon <dfreelon@gmail.com>
 # Distributed under the BSD 3-clause license. See LICENSE.txt or http://opensource.org/licenses/BSD-3-Clause for details.
 
@@ -147,7 +147,7 @@ def t2e(tweet_data,extmode='ALL',enc='utf-8',save_prefix=''):
             if len(authors[i]) >= 1 and authors[i] != rted: #prevents ppl from manually RTing themselves
                 final.append([authors[i],rted])
 
-    else: #the code below is necessary to pull multiple mentioned users from single tweets
+    if extmode != 'RTS_ONLY': #the code below is necessary to pull multiple mentioned users from single tweets
         tweets = [t.split('@') for t in tweets] #splits each tweet along @s
         for n,chunk in enumerate(tweets):
             ment_users = [t[:re.search('[^A-Za-z0-9_]',t).start()].lower().strip() for t in chunk if re.search('[^A-Za-z0-9_]',t) is not None]
@@ -743,29 +743,40 @@ def get_intermediaries(nodes_data,edges_data,bridge_threshold=0.5,nodes_filter=0
 # get_top_hashtags: Collects the most-used hashtags in each community in descending order of popularity
 # Description: This function collects the most-used hashtags in a set of tweets that's been partitioned into communities and organizes them first by community and then in descending order of popularity.
 # Arguments:
-    # tweets_data: a path to a CSV file (the only delimiter currently allowed is commas) with tweet authors listed in col 1 and corresponding tweet text in col 2. If col 1 contains any text, col 2 must as well, and vice versa.
-    # nodes_data: A community-partition dataset of the type exported by get_top_communities.
+    # tweets_data: 
+        # IF nodes_data IS NONBLANK: a path to a CSV file (the only delimiter currently allowed is commas) with tweet authors listed in col 1 and corresponding tweet text in col 2. If col 1 contains any text, col 2 must as well, and vice versa. 
+        # IF nodes_data IS BLANK: a path to a CSV file (the only delimiter currently allowed is commas) with tweet text in col 1, which should be the sole column.
+    # nodes_data: A community-partition dataset of the type exported by get_top_communities. Can be left blank per the explanation above.
     # min_ct: The minimum number of times a hashtag must appear in a given community to be included in that community's list. Increasing this number speeds processing. Default is 10.
     # rtl_ht: If set to True, the function will search for hashtags written with the hashmark on the right, such as those in right-to-left languages like Arabic and Hebrew. If set to False, it will not include such hashtags. Default is False.
-# Output: A dict whose keys are community IDs and whose values are lists, the entries of which are tuples in which the first value is a hashtag and the second is the number of times it appears within the given community. Each list is arranged in descending order of hashtag prevalence.
+# Output: 
+    # IF nodes_data IS NONBLANK: A dict whose keys are community IDs and whose values are lists, the values of which are tuples in which the first value is a hashtag and the second is the number of times it appears within the given community. Each list is arranged in descending order of hashtag prevalence.
+    # IF nodes_data IS BLANK: a list whose values are tuples in which the first value is a hashtag and the second is the number of times it appears within the given community. This list is arranged in descending order of hashtag prevalence.
     
-def get_top_hashtags(tweets_data,nodes_data,min_ct=10,rtl_ht=False):
-    tweets = [i for i in load_data(tweets_data) if i[0].strip() != '']  
-    nodes = [i for i in load_data(nodes_data) if i[0].strip() != '']
-    if nodes_data[0][0] == 'name':
-        del nodes[0]
+def get_top_hashtags(tweets_data,nodes_data='',min_ct=10,rtl_ht=False):
+    tweets = [i for i in load_data(tweets_data) if i[0].strip() != ''] 
+    if nodes_data != '':
+        nodes = [i for i in load_data(nodes_data) if i[0].strip() != '']
+        if nodes_data[0][0] == 'name':
+            del nodes[0]
 
-    clust_uniq = set([i[1] for i in nodes])
-    node_dict = {i[0].lower():i[1] for i in nodes}
-    tweets = [[i[0].lower(),i[1].lower()] for i in tweets if i[0].lower() in node_dict]
+        clust_uniq = set([i[1] for i in nodes])
+        node_dict = {i[0].lower():i[1] for i in nodes}
+        tweets = [[i[0].lower(),i[1].lower()] for i in tweets if i[0].lower() in node_dict]
+    else:
+        clust_uniq = set(['1'])
+        tweets = tuple([i.lower() for i in tweets])
     ht_dict = {}
 
     for cid in clust_uniq:
-        splitprep = [' ' + re.sub(r'[\\\"\'\.\,\-\:“”()!&\[\]]',' ',t[1]).lower().replace(u'\u200F','') + ' ' for t in tweets if '#' in t[1] and node_dict[t[0]] == cid] #fills in the list tweets with hashtags, lowercased, space-padded, cleaned and only if a hashmark exists in the tweet
+        if nodes_data != '':
+            splitprep = [' ' + re.sub(r'[\\\"\'\.\,\-\:“”()!&\[\];><]',' ',t[1]).lower().replace(u'\u200F','') + ' ' for t in tweets if '#' in t[1] and node_dict[t[0]] == cid] #fills in the list tweets with hashtags, lowercased, space-padded, cleaned and only if a hashmark exists in the tweet
+        else:
+            splitprep = [' ' + re.sub(r'[\\\"\'\.\,\-\:“”()!&\[\];><]',' ',t).lower().replace(u'\u200F','') + ' ' for t in tweets if '#' in t]
         tweets_split = [t.split('#') for t in splitprep] #splits each tweet along #s
         final = []
         for chunk in tweets_split:
-            f_hashtags = [t[:re.search('[\s\r\n\t]',t).start()].strip() for t in chunk if re.search('[\s\r\n\t]',t) is not None]  #strips out everything after the # sign, leaving (hopefully) a list of lists of hashtags
+            f_hashtags = [t[:re.search('[\s\r\n\t]',t).start()].strip() for t in chunk if re.search('[\s\r\n\t]',t) is not None] #strips out everything after the # sign, leaving (hopefully) a list of lists of hashtags
             final.extend(set([h for h in f_hashtags if len(h.strip()) > 0])) #use set so as not to count multiple iterations of the same hashtag used in a single tweet
         if rtl_ht == True:
             for chunk in tweets_split:
@@ -773,8 +784,11 @@ def get_top_hashtags(tweets_data,nodes_data,min_ct=10,rtl_ht=False):
                 final.extend(set([h for h in r_hashtags if len(h) > 0]))
   
         ht_dict[cid] = final
-
-    return _count_cmty_dups(ht_dict,min_ct)
+    
+    if nodes_data != '':
+        return _count_cmty_dups(ht_dict,min_ct)
+    else:
+        return _count_cmty_dups(ht_dict,min_ct)['1']
     
 # get_top_links: Collects the most-used hyperlinks or web domains in each community in descending order of popularity
 # Description: This function collects the most-used hyperlinks or web domains in a set of tweets that's been partitioned into communities and organizes them first by community and then in descending order of popularity.
@@ -785,23 +799,34 @@ def get_top_hashtags(tweets_data,nodes_data,min_ct=10,rtl_ht=False):
     # domains_only: If set to True, get_top_links will extract only web domains (e.g. all articles from the New York Times will be counted under the nytimes.com domain). If set to False, it will extract full links and count distinct links with the same domain separately. Default is False.
     # remove_3ld: If set to True, the function will remove all third-level domains from the links (e.g. "www."). If set to False, it will leave all third-level domains intact. Default is False.
     # remove_tco: If set to True, the function will remove any t.co links from the results. If set to False, it will leave in any t.co links. Default is True.
-# Output: A dict whose keys are community IDs and whose values are lists, each of which contains one community's top hyperlinks or web domains arranged in descending order of popularity.
+# Output: 
+    # IF nodes_data IS NONBLANK: A dict whose keys are community IDs and whose values are lists, the values of which are tuples in which the first value is a link or domain and the second is the number of times it appears within the given community. Each list is arranged in descending order of hashtag prevalence.
+    # IF nodes_data IS BLANK: a list whose values are tuples in which the first value is a link or domain and the second is the number of times it appears within the given community. This list is arranged in descending order of link/domain prevalence.
 
-def get_top_links(tweets_data,nodes_data,min_ct=10,domains_only=False,remove_3ld=False,remove_tco=True):
-    tweets = [i for i in load_data(tweets_data) if i[0].strip() != '']  
-    nodes = [i for i in load_data(nodes_data) if i[0].strip() != '']
-    if nodes_data[0][0] == 'name':
-        del nodes[0]
+def get_top_links(tweets_data,nodes_data='',min_ct=10,domains_only=False,remove_3ld=False,remove_tco=True):
+    tweets = [i for i in load_data(tweets_data) if i[0].strip() != '']
+    if nodes_data != '':    
+        nodes = [i for i in load_data(nodes_data) if i[0].strip() != '']
+        if nodes_data[0][0] == 'name':
+            del nodes[0]
 
-    clust_uniq = set([i[1] for i in nodes])
-    node_dict = {i[0].lower():i[1] for i in nodes}
-    tweets = [[i[0].lower(),i[1].replace('https','http')] for i in tweets if i[0].lower() in node_dict]
+        clust_uniq = set([i[1] for i in nodes])
+        node_dict = {i[0].lower():i[1] for i in nodes}
+        tweets = [[i[0].lower(),i[1].replace('https','http')] for i in tweets if i[0].lower() in node_dict]
+        if remove_tco == True:
+            tweets = [[i[0],i[1].replace('http://t.co/','')] for i in tweets]
+    else:
+        clust_uniq = set(['1'])
+        tweets = tuple([i.replace('https','http') for i in tweets])
+        if remove_tco == True:
+            tweets = tuple([i.replace('http://t.co/','') for i in tweets])
     links_dict = {}
-    if remove_tco == True:
-        tweets = [[i[0],i[1].replace('http://t.co/','')] for i in tweets]
-
+   
     for cid in clust_uniq:
-        splitprep = [' ' + re.sub(r'[\\"\'“”\[\]><]','',t[1]).replace(u'\u200F','') + ' ' for t in tweets if 'http://' in t[1] and node_dict[t[0]] == cid] #fills in the list tweets with hyperlinks, lowercased, space-padded, cleaned and only if 'http://' exists in the tweet
+        if nodes_data != '':
+            splitprep = [' ' + re.sub(r'[\\"\'“”\[\]><]','',t[1]).replace(u'\u200F','') + ' ' for t in tweets if 'http://' in t[1] and node_dict[t[0]] == cid] #fills in the list tweets with hyperlinks, lowercased, space-padded, cleaned and only if 'http://' exists in the tweet
+        else:
+            splitprep = [' ' + re.sub(r'[\\"\'“”\[\]><]','',t).replace(u'\u200F','') + ' ' for t in tweets if 'http://' in t]
         tweets_split = [t.split('http://') for t in splitprep] #splits each tweet along 'http://'s
         final = []
         for chunk in tweets_split:
@@ -818,8 +843,11 @@ def get_top_links(tweets_data,nodes_data,min_ct=10,domains_only=False,remove_3ld
                     final[key] = final[key][final[key].find('.')+1:]
                     
         links_dict[cid] = final
-
-    return _count_cmty_dups(links_dict,min_ct)
+        
+    if nodes_data != '':
+        return _count_cmty_dups(links_dict,min_ct)
+    else:
+        return _count_cmty_dups(links_dict,min_ct)['1']
 
 # _count_cmty_dups: Helper function for get_top_hashtags and get_top_links
 # Description: This function helps coax the data for get_top_hashtags and get_top_links into the proper format. You shouldn't need to alter it.
