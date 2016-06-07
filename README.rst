@@ -27,8 +27,8 @@ Here are some of the things TSM can do:
   network communities drawn from the same dataset at two different
   time slices
 - Discover which nodes intermediate between which communities
-- Find the most-used hashtags in each community
-- Find the most-used hyperlinks or web domains in each community
+- Find the most-used hashtags in each community (or dataset)
+- Find the most-used hyperlinks or web domains in each community (or dataset)
 
 
 Here's what you need to use TSM:
