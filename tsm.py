@@ -762,7 +762,7 @@ def get_top_hashtags(tweets_data,nodes_data='',min_ct=10,rtl_ht=False):
 
         clust_uniq = set([i[1] for i in nodes])
         node_dict = {i[0].lower():i[1] for i in nodes}
-        tweets = [[i[0].lower(),i[1].lower()] for i in tweets if i[0].lower() in node_dict]
+        tweets = tuple([[i[0].lower(),i[1].lower()] for i in tweets if i[0].lower() in node_dict])
     else:
         clust_uniq = set(['1'])
         tweets = tuple([i.lower() for i in tweets])
@@ -812,9 +812,9 @@ def get_top_links(tweets_data,nodes_data='',min_ct=10,domains_only=False,remove_
 
         clust_uniq = set([i[1] for i in nodes])
         node_dict = {i[0].lower():i[1] for i in nodes}
-        tweets = [[i[0].lower(),i[1].replace('https','http')] for i in tweets if i[0].lower() in node_dict]
+        tweets = tuple([[i[0].lower(),i[1].replace('https','http')] for i in tweets if i[0].lower() in node_dict])
         if remove_tco == True:
-            tweets = [[i[0],i[1].replace('http://t.co/','')] for i in tweets]
+            tweets = tuple([[i[0],i[1].replace('http://t.co/','')] for i in tweets])
     else:
         clust_uniq = set(['1'])
         tweets = tuple([i.replace('https','http') for i in tweets])
