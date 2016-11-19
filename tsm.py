@@ -797,10 +797,10 @@ def get_top_hashtags(tweets_data,nodes_data='',min_ct=10,rtl_ht=False):
         ht_dict[cid] = tuple(final)
     
     for i in ht_dict:
-        ht_dict[i] = tuple(collections.Counter(ht_dict[i]).most_common())
+        ht_dict[i] = tuple([j for j in collections.Counter(ht_dict[i]).most_common() if j[1] >= min_ct])
     
     if nodes_data != '':
-        return {i:ht_dict[i] for i in ht_dict if len(ht_dict[i]) > 0 and ht_dict[i][0][1] >= min_ct}
+        return {i:ht_dict[i] for i in ht_dict if len(ht_dict[i]) > 0}
     else:
         return [i for i in ht_dict['1'] if len(ht_dict['1']) > 0 and i[1] >= min_ct]
     
@@ -868,9 +868,9 @@ def get_top_links(tweets_data,nodes_data='',min_ct=10,domains_only=False,remove_
         links_dict[cid] = tuple(final)
     
     for i in links_dict:
-        links_dict[i] = tuple(collections.Counter(links_dict[i]).most_common())
+        links_dict[i] = tuple([j for j in collections.Counter(links_dict[i]).most_common() if j[1] >= min_ct])
     if nodes_data != '':
-        return {i:links_dict[i] for i in links_dict if len(links_dict[i]) > 0 and links_dict[i][0][1] >= min_ct}
+        return {i:links_dict[i] for i in links_dict if len(links_dict[i]) > 0}
     else:
         return [i for i in links_dict['1'] if i[1] >= min_ct]
 
