@@ -5,8 +5,8 @@ import tsm
 
 # change the next two lines, obviously
 
-tweet_file_A = './data/blm/byday/blm_2014-06-01.csv'
-tweet_file_B = './data/blm/byday/blm_2014-06-02.csv'
+tweet_file_A = './path/to/formatted_tsm_file_A.csv'
+tweet_file_B = './path/to/formatted_tsm_file_B.csv'
 edgelist_A = tsm.t2e(tweet_file_A)
 edgelist_B = tsm.t2e(tweet_file_B)
 top_communities_A = tsm.get_top_communities(edgelist_A)
