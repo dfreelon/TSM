@@ -8,6 +8,7 @@ Twitter Subgraph Manipulator by `Deen Freelon`_
 
 In short, TSM is a Python module that contains a few functions for analyzing Twitter and Twitter-like (i.e., directed and very sparse with community structure) network data. I wrote it for my own research purposes but thought someone out there might find it useful.
 
+**Now available in PyPI!** Just use: ``pip3 install tsm``
 
 Here are some of the things TSM can do:
 
@@ -34,11 +35,8 @@ Here are some of the things TSM can do:
 Here's what you need to use TSM:
 
 - ``tsm.py``, the TSM Python module provided here
-- `python-louvain`_, Thomas Aynaud's Python
-  implementation of the Louvain method of network community
-  detection. 
-- `NetworkX`_, a widely-used Python module for general network
-  analysis. 
+- `python-louvain`_, Thomas Aynaud's Python implementation of the Louvain method of network community detection. 
+- `NetworkX`_, a Python module for general network analysis. 
 - `Python`_ 3.x (needed for Unicode support)
 
 .. _python-louvain: https://bitbucket.org/taynaud/python-louvain
