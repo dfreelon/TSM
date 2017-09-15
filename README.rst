@@ -63,5 +63,9 @@ The ``TSM demo files.zip`` file contains two IPython notebooks and a Twitter ID 
     some_other_user,Of course twitter is grand. Mostly because of @dril.
     dril,Some weird tweet no one understands but everyone favorites @some_other_user
     cnnbrk,Looks like @dril just tweeted
+    
+---------------
+Acknowledgments
+---------------
 
 I gratefully acknowledge funding support from the US Institute of Peace in creating this module.
