@@ -14,6 +14,8 @@ Installation instructions
 
 **Now available in PyPI!** Just use: ``pip3 install tsm``. But when installing from PyPI you need to use ``from tsm import tsm`` as ``import tsm`` won't work by itself.
 
+Alternatively, you can simply install tsm's dependencies manually and move ``tsm.py`` into your PYTHONPATH directory.
+
 --------
 Features
 --------
