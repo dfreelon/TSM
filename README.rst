@@ -8,7 +8,7 @@ Twitter Subgraph Manipulator by `Deen Freelon`_
 
 In short, TSM is a Python module that contains a few functions for analyzing Twitter and Twitter-like (i.e., directed and very sparse with community structure) network data. I wrote it for my own research purposes but thought someone out there might find it useful.
 
-**Now available in PyPI!** Just use: ``pip3 install tsm``
+**Now available in PyPI!** Just use: ``pip3 install tsm``. But when installing from PyPI you need to use ``from tsm import tsm`` as ``import tsm`` won't work by itself.
 
 Here are some of the things TSM can do:
 
