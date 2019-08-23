@@ -536,16 +536,24 @@ class cMatchObject:
         self.convergences = convergences
 
 def match_communities(nodes_data_A,nodes_data_B,nodes_filter=0.01,jacc_threshold=0.3,dc_threshold=0.2,weight_edges=True,verbose=False):
-    nodesA = load_data(nodes_data_A)
-    if nodesA[0][0] == 'name':
-        del nodesA[0]
+    filtered_nodes_1 = {}
+    filtered_nodes_2 = {}
+    # If data already filtered, assign the vars
+    if (type(nodes_data_A) is dict) and (type(nodes_data_B) is dict):
+        filtered_nodes_1 = nodes_data_A
+        filtered_nodes_2 = nodes_data_B
+    # Else assume it is a CSV file and load, then assign via _filter_nodes()
+    else:
+        nodesA = load_data(nodes_data_A)
+        if nodesA[0][0] == 'name':
+            del nodesA[0]
 
-    nodesB = load_data(nodes_data_B)
-    if nodesB[0][0] == 'name':
-        del nodesB[0]
+        nodesB = load_data(nodes_data_B)
+        if nodesB[0][0] == 'name':
+            del nodesB[0]
 
-    filtered_nodes_1 = _filter_nodes(nodesA,nodes_filter)
-    filtered_nodes_2 = _filter_nodes(nodesB,nodes_filter)
+        filtered_nodes_1 = _filter_nodes(nodesA,nodes_filter)
+        filtered_nodes_2 = _filter_nodes(nodesB,nodes_filter)
     
     hijacc = 0
     best_match = {}
