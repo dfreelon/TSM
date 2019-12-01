@@ -996,7 +996,6 @@ def shared_ties_grid(ei_obj,rec_sent='ALL',calc_propor=False,invert=False):
                 else:
                     recip[n].append(outlist[n][x])
         return recip
-<<<<<<< HEAD
     else:
         return outlist
 
@@ -1038,7 +1037,3 @@ def communities_as_nodes(nodes_data,
             print('Completed edge',i,'.')
     
     return gephi_in
-=======
-    else:    
-        return outlist
->>>>>>> 8e534be0af446d59a22a91a82679d5e5799c3bff
