@@ -568,15 +568,9 @@ def match_communities(nodes_data_A,nodes_data_B,nodes_filter=0.01,jacc_threshold
         if nodesB[0][0] == 'name':
             del nodesB[0]
 
-<<<<<<< HEAD
     filtered_nodes_1 = _filter_nodes(nodesA,nodes_filter)
     filtered_nodes_2 = _filter_nodes(nodesB,nodes_filter)
 
-=======
-        filtered_nodes_1 = _filter_nodes(nodesA,nodes_filter)
-        filtered_nodes_2 = _filter_nodes(nodesB,nodes_filter)
-    
->>>>>>> 8e534be0af446d59a22a91a82679d5e5799c3bff
     hijacc = 0
     best_match = {}
     nonzero_jacc = {}
